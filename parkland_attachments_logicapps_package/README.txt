@@ -1,5 +1,5 @@
 
-# Parkland Attachments Logic Apps Package
+# HIPAA Attachments Logic Apps Package
 
 This package contains:
 - `workflow.ingest275.json` — **Inbound 275 ingestion** workflow (SFTP → Blob → Decode X12 → SB → QNXT)
