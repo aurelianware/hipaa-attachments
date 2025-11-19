@@ -24,6 +24,30 @@ param iaName string //= 'prod-integration-account'
 
 // Toggle B2B (X12) managed connection
 param enableB2B bool = true
+
+// =========================
+// Appeals Integration Parameters
+// =========================
+@description('Enable Claim Appeals integration')
+param appealsEnabled bool = false
+
+@description('QNXT appeals endpoint URL')
+param qnxtAppealsEndpoint string = ''
+
+@description('Availity Bedlam API endpoint URL')
+param availityBedlamEndpoint string = ''
+
+@description('DMS (Document Management System) endpoint URL')
+param dmsEndpoint string = ''
+
+@description('Maximum attachment file size in bytes')
+param maxAttachmentSizeBytes int = 10485760
+
+@description('Maximum number of attachments per appeal')
+param maxAttachmentsPerAppeal int = 10
+
+@description('Appeal submission time window in days')
+param appealTimeWindowDays int = 365
  
 // SFTPconnection params
 //param sftpHost string = 'sftp.example.com'
@@ -291,6 +315,31 @@ resource connIa 'Microsoft.Web/connections@2016-06-01' = if (enableB2B) {
 
 
 // =========================
+// Appeals Module (Conditional)
+// =========================
+module appealsModule 'modules/appeals-api.bicep' = if (appealsEnabled) {
+  name: 'appeals-api-deployment'
+  params: {
+    location: location
+    baseName: baseName
+    appealsEnabled: appealsEnabled
+    qnxtAppealsEndpoint: qnxtAppealsEndpoint
+    availityBedlamEndpoint: availityBedlamEndpoint
+    dmsEndpoint: dmsEndpoint
+    maxAttachmentSizeBytes: maxAttachmentSizeBytes
+    maxAttachmentsPerAppeal: maxAttachmentsPerAppeal
+    appealTimeWindowDays: appealTimeWindowDays
+    serviceBusNamespaceName: sb.name
+    storageAccountName: stg.name
+    keyVaultName: ''
+    tags: {
+      component: 'appeals'
+      environment: 'dev'
+    }
+  }
+}
+
+// =========================
 // Outputs
 // =========================
 output storageAccountName string = stg.name
@@ -302,3 +351,14 @@ output sftpConnectionId string = connSftp.id
 output blobConnectionId string = connBlob.id
 output serviceBusConnectionId string = connSb.id
 output integrationAccountConnectionId string = enableB2B ? connIa.id : 'disabled'
+output appealsConfiguration object = appealsEnabled && appealsModule != null ? appealsModule.outputs.appealsConfiguration : {
+  enabled: false
+  qnxtEndpoint: ''
+  availityEndpoint: ''
+  dmsEndpoint: ''
+  maxAttachmentSizeBytes: 0
+  maxAttachmentsPerAppeal: 0
+  appealTimeWindowDays: 0
+  serviceBusTopics: {}
+  storage: {}
+}

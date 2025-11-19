@@ -1,0 +1,71 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "baseName": {
+      "value": "hipaa-attachments"
+    },
+    "location": {
+      "value": "westus"
+    },
+    "connectorLocation": {
+      "value": "eastus"
+    },
+    "sftpHost": {
+      "value": "sftp.availity.com"
+    },
+    "sftpUsername": {
+      "value": "hipaa-user"
+    },
+    "sftpPassword": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/{subscription-id}/resourceGroups/{rg-name}/providers/Microsoft.KeyVault/vaults/{vault-name}"
+        },
+        "secretName": "sftp-password"
+      }
+    },
+    "storageSku": {
+      "value": "Standard_LRS"
+    },
+    "iaSku": {
+      "value": "Free"
+    },
+    "useExistingIa": {
+      "value": false
+    },
+    "iaName": {
+      "value": "hipaa-integration-account"
+    },
+    "enableB2B": {
+      "value": true
+    },
+    "serviceBusName": {
+      "value": "hipaa-logic-svc"
+    },
+    "appServicePlanName": {
+      "value": "hipaa-attachments-plan"
+    },
+    "appealsEnabled": {
+      "value": false
+    },
+    "qnxtAppealsEndpoint": {
+      "value": "https://qnxt.example.com/api/appeals"
+    },
+    "availityBedlamEndpoint": {
+      "value": "https://api.availity.com/bedlam/v1/appeals"
+    },
+    "dmsEndpoint": {
+      "value": "https://dms.example.com/api/documents"
+    },
+    "maxAttachmentSizeBytes": {
+      "value": 10485760
+    },
+    "maxAttachmentsPerAppeal": {
+      "value": 10
+    },
+    "appealTimeWindowDays": {
+      "value": 365
+    }
+  }
+}

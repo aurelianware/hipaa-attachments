@@ -1,0 +1,476 @@
+openapi: 3.0.3
+info:
+  title: HIPAA Attachments - Claim Appeals API
+  description: |
+    API for managing claim appeals with Availity Bedlam integration.
+    
+    This API provides endpoints for:
+    - Submitting new appeals to payers via Availity
+    - Updating existing appeals with additional information
+    - Retrieving appeal details and status
+    - Receiving appeal status updates from Availity (webhook)
+    
+    **Authentication**: OAuth 2.0 Bearer Token (Azure AD)
+    
+    **Base URL**: `https://{logic-app-name}.azurewebsites.net/api`
+    
+    **TODO**: 
+    - Implement OAuth 2.0 authentication
+    - Add rate limiting headers
+    - Define error response schemas
+    - Add examples for all operations
+    - Document webhook security (signature validation)
+  version: 1.0.0
+  contact:
+    name: HIPAA Attachments API Support
+    email: api-support@aurelianware.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://{logicAppName}.azurewebsites.net/api
+    description: Azure Logic App Standard endpoint
+    variables:
+      logicAppName:
+        default: hipaa-attachments-la
+        description: Logic App name
+
+tags:
+  - name: Appeals
+    description: Claim appeal submission and management
+  - name: Webhooks
+    description: Availity webhook endpoints for status updates
+
+paths:
+  /appeal/to-payer:
+    post:
+      tags:
+        - Appeals
+      summary: Submit new appeal to payer
+      description: |
+        Submit a new claim appeal to a payer via Availity Bedlam API.
+        
+        **Workflow**: appeal_to_payer
+        
+        **Process**:
+        1. Validate request schema
+        2. Verify documents in DMS
+        3. Validate claim in QNXT
+        4. Submit to Availity Bedlam API
+        5. Register appeal in QNXT
+        6. Return appeal ID and status
+        
+        **TODO**: 
+        - Implement request validation
+        - Add DMS integration
+        - Add QNXT integration
+        - Add Availity API client
+      operationId: submitAppealToPayer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppealToPayerRequest'
+            example:
+              claimNumber: "CLM123456789"
+              memberId: "MEM987654"
+              providerNpi: "1234567890"
+              appealReason: "DENIED_CLAIM"
+              appealReasonDescription: "Claim was incorrectly denied due to coding error"
+              appealDate: "2024-01-15T10:30:00Z"
+              requestedBy:
+                name: "Dr. Jane Smith"
+                role: "PROVIDER"
+                contactPhone: "5551234567"
+                contactEmail: "jane.smith@provider.com"
+              attachments:
+                - fileName: "appeal_letter.pdf"
+                  dataLakePath: "hipaa-attachments/raw/275/2024/01/15/appeal_letter.pdf"
+                  fileSize: 524288
+                  mimeType: "application/pdf"
+      responses:
+        '200':
+          description: Appeal submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppealToPayerResponse'
+              example:
+                appealId: "APL-20240115103045-A1B2C3"
+                status: "SUBMITTED"
+                availityReferenceNumber: "AVL-2024-001234"
+                submittedAt: "2024-01-15T10:30:45Z"
+                expectedResponseDate: "2024-02-14"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /appeal/update:
+    put:
+      tags:
+        - Appeals
+      summary: Update existing appeal
+      description: |
+        Update an existing appeal with additional information, corrections, or status changes.
+        
+        **Workflow**: appeal_update_to_payer
+        
+        **Update Types**:
+        - ADDITIONAL_DOCUMENTATION: Add more supporting documents
+        - CORRECTED_INFORMATION: Correct previously submitted information
+        - WITHDRAWAL: Withdraw the appeal
+        - ESCALATION: Escalate to urgent/expedited status
+        
+        **TODO**:
+        - Implement update type routing
+        - Add validation for each update type
+        - Integrate with Availity API
+      operationId: updateAppeal
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppealUpdateToPayerRequest'
+      responses:
+        '200':
+          description: Appeal updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  appealId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [UPDATED, UPDATE_FAILED]
+                  updateType:
+                    type: string
+                  updatedAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid request
+        '404':
+          description: Appeal not found
+        '500':
+          description: Internal server error
+
+  /appeal/details:
+    get:
+      tags:
+        - Appeals
+      summary: Get appeal details
+      description: |
+        Retrieve detailed information about an appeal including status, history, attachments, and correspondence.
+        
+        **Workflow**: appeal_get_details
+        
+        **Query Options**:
+        - `includeHistory`: Include complete status change history
+        - `includeAttachments`: Include attachment metadata
+        - `includeCorrespondence`: Include correspondence history
+        
+        **TODO**:
+        - Implement QNXT query
+        - Add Availity status sync
+        - Implement optional data retrieval
+      operationId: getAppealDetails
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: appealId
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^APL-[A-Z0-9]{10,20}$'
+          description: Unique appeal identifier
+        - name: includeHistory
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Include complete appeal history
+        - name: includeAttachments
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: Include attachment metadata
+        - name: includeCorrespondence
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Include correspondence history
+      responses:
+        '200':
+          description: Appeal details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppealGetDetailsResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Appeal not found
+        '500':
+          description: Internal server error
+
+  /appeal/update-to-availity:
+    post:
+      tags:
+        - Webhooks
+      summary: Receive appeal updates from Availity
+      description: |
+        Webhook endpoint for receiving appeal status updates from Availity Bedlam API.
+        
+        **Workflow**: appeal_update_to_availity
+        
+        **Event Types**:
+        - STATUS_UPDATE: General status change
+        - DECISION: Appeal decision received (approved/denied)
+        - CORRESPONDENCE: Message or correspondence from payer
+        
+        **Security**: 
+        - Validates X-Availity-Signature header
+        - Verifies webhook authenticity
+        
+        **TODO**:
+        - Implement signature validation
+        - Add idempotency handling
+        - Implement event routing logic
+      operationId: receiveAvailityUpdate
+      security:
+        - webhookSignature: []
+      parameters:
+        - name: X-Availity-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signature for webhook authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - eventType
+                - appealId
+                - status
+              properties:
+                eventType:
+                  type: string
+                  enum: [STATUS_UPDATE, DECISION, CORRESPONDENCE]
+                appealId:
+                  type: string
+                availityReferenceNumber:
+                  type: string
+                status:
+                  type: string
+                decision:
+                  type: object
+                  properties:
+                    decisionCode:
+                      type: string
+                      enum: [APPROVED_FULL, APPROVED_PARTIAL, DENIED]
+                    decisionDate:
+                      type: string
+                      format: date-time
+                    adjustedAmount:
+                      type: number
+                timestamp:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Webhook acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ACKNOWLEDGED]
+                  appealId:
+                    type: string
+                  processedAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid webhook payload
+        '401':
+          description: Invalid signature
+        '500':
+          description: Processing error
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OAuth 2.0 Bearer Token (Azure AD)
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Availity-Signature
+      description: HMAC-SHA256 signature for webhook authentication
+
+  schemas:
+    AppealToPayerRequest:
+      type: object
+      description: Schema reference - see schemas/Appeal-ToPayer-Request.json
+      externalDocs:
+        description: Full JSON Schema
+        url: file://../../schemas/Appeal-ToPayer-Request.json
+      required:
+        - claimNumber
+        - memberId
+        - appealReason
+        - appealDate
+        - requestedBy
+      properties:
+        claimNumber:
+          type: string
+          pattern: '^[A-Z0-9]{8,20}$'
+        memberId:
+          type: string
+          pattern: '^[A-Z0-9]{6,15}$'
+        providerNpi:
+          type: string
+          pattern: '^[0-9]{10}$'
+        appealReason:
+          type: string
+          enum: 
+            - DENIED_CLAIM
+            - PARTIAL_PAYMENT
+            - CODING_DISPUTE
+            - MEDICAL_NECESSITY
+            - TIMELY_FILING
+            - AUTHORIZATION_ISSUE
+            - OUT_OF_NETWORK
+            - COORDINATION_OF_BENEFITS
+            - DUPLICATE_CLAIM
+            - OTHER
+        appealReasonDescription:
+          type: string
+          maxLength: 2000
+        appealDate:
+          type: string
+          format: date-time
+        requestedBy:
+          type: object
+          required:
+            - name
+            - role
+          properties:
+            name:
+              type: string
+              maxLength: 100
+            role:
+              type: string
+              enum: [PROVIDER, MEMBER, AUTHORIZED_REPRESENTATIVE]
+            contactPhone:
+              type: string
+            contactEmail:
+              type: string
+              format: email
+        attachments:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+
+    AppealToPayerResponse:
+      type: object
+      description: Schema reference - see schemas/Appeal-ToPayer-Response.json
+      externalDocs:
+        description: Full JSON Schema
+        url: file://../../schemas/Appeal-ToPayer-Response.json
+      required:
+        - appealId
+        - status
+        - submittedAt
+      properties:
+        appealId:
+          type: string
+          pattern: '^APL-[A-Z0-9]{10,20}$'
+        status:
+          type: string
+          enum: [SUBMITTED, ACCEPTED, REJECTED, FAILED]
+        availityReferenceNumber:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        expectedResponseDate:
+          type: string
+          format: date
+
+    AppealUpdateToPayerRequest:
+      type: object
+      description: Schema reference - see schemas/Appeal-UpdateToPayer-Request.json
+      externalDocs:
+        description: Full JSON Schema
+        url: file://../../schemas/Appeal-UpdateToPayer-Request.json
+
+    AppealGetDetailsResponse:
+      type: object
+      description: Schema reference - see schemas/Appeal-GetDetails-Response.json
+      externalDocs:
+        description: Full JSON Schema
+        url: file://../../schemas/Appeal-GetDetails-Response.json
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+        correlationId:
+          type: string
+          format: uuid
+          description: Request correlation ID for troubleshooting
