@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aurelianware.com/schemas/Appeal-ToPayer-Response.json",
+  "title": "Appeal To Payer Response",
+  "description": "Response schema for claim appeal submission to payer",
+  "type": "object",
+  "required": [
+    "appealId",
+    "status",
+    "submittedAt"
+  ],
+  "properties": {
+    "appealId": {
+      "type": "string",
+      "description": "Unique identifier for the appeal assigned by the system",
+      "pattern": "^APL-[A-Z0-9]{10,20}$"
+    },
+    "claimNumber": {
+      "type": "string",
+      "description": "Original claim number from request"
+    },
+    "memberId": {
+      "type": "string",
+      "description": "Member identifier from request"
+    },
+    "status": {
+      "type": "string",
+      "description": "Current status of the appeal submission",
+      "enum": [
+        "SUBMITTED",
+        "ACCEPTED",
+        "REJECTED",
+        "PENDING_REVIEW",
+        "IN_PROGRESS",
+        "COMPLETED",
+        "FAILED"
+      ]
+    },
+    "availityReferenceNumber": {
+      "type": "string",
+      "description": "Reference number from Availity Bedlam API",
+      "maxLength": 50
+    },
+    "payerReferenceNumber": {
+      "type": "string",
+      "description": "Reference number from the payer system",
+      "maxLength": 50
+    },
+    "submittedAt": {
+      "type": "string",
+      "description": "Timestamp when appeal was submitted (ISO 8601 format)",
+      "format": "date-time"
+    },
+    "expectedResponseDate": {
+      "type": "string",
+      "description": "Expected date for payer response (ISO 8601 format)",
+      "format": "date"
+    },
+    "validationResults": {
+      "type": "object",
+      "description": "Results of validation checks",
+      "properties": {
+        "dmsVerification": {
+          "type": "object",
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "message": {
+              "type": "string"
+            },
+            "verifiedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "qnxtValidation": {
+          "type": "object",
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "claimExists": {
+              "type": "boolean"
+            },
+            "eligibilityVerified": {
+              "type": "boolean"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        },
+        "attachmentValidation": {
+          "type": "object",
+          "properties": {
+            "totalFiles": {
+              "type": "integer"
+            },
+            "validFiles": {
+              "type": "integer"
+            },
+            "totalSize": {
+              "type": "integer",
+              "description": "Total size of all attachments in bytes"
+            },
+            "withinLimits": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "description": "List of errors if submission failed",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["ERROR", "WARNING", "INFO"]
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "description": "List of warnings or informational messages",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "nextSteps": {
+      "type": "array",
+      "description": "Recommended next steps or actions",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Response metadata for tracking",
+      "properties": {
+        "correlationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "processingTimeMs": {
+          "type": "integer",
+          "description": "Processing time in milliseconds"
+        },
+        "workflowRunId": {
+          "type": "string",
+          "description": "Logic App workflow run identifier"
+        }
+      }
+    }
+  }
+}

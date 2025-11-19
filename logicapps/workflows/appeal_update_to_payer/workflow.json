@@ -1,0 +1,362 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/schemas/2023-01-31-preview/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "HTTP_Appeal_Update_Request": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "$ref": "file://schemas/Appeal-UpdateToPayer-Request.json"
+          },
+          "method": "PUT"
+        },
+        "operationOptions": "EnableSchemaValidation"
+      }
+    },
+    "actions": {
+      "Initialize_Variables": {
+        "type": "Scope",
+        "actions": {
+          "Set_CorrelationId": {
+            "type": "InitializeVariable",
+            "inputs": {
+              "variables": [
+                {
+                  "name": "correlationId",
+                  "type": "string",
+                  "value": "@{coalesce(triggerBody()?['metadata']?['correlationId'], guid())}"
+                }
+              ]
+            },
+            "runAfter": {}
+          }
+        },
+        "runAfter": {}
+      },
+      "Log_Update_Request": {
+        "type": "Compose",
+        "inputs": {
+          "message": "Appeal update request received",
+          "correlationId": "@variables('correlationId')",
+          "appealId": "@triggerBody()?['appealId']",
+          "updateType": "@triggerBody()?['updateType']"
+        },
+        "runAfter": {
+          "Initialize_Variables": ["Succeeded"]
+        },
+        "description": "TODO: Send to Application Insights"
+      },
+      "Validate_Appeal_Exists": {
+        "type": "Scope",
+        "actions": {
+          "Query_QNXT_For_Appeal": {
+            "type": "Compose",
+            "inputs": {
+              "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+              "appealId": "@triggerBody()?['appealId']"
+            },
+            "runAfter": {},
+            "description": "TODO: Query QNXT to verify appeal exists and retrieve current status. Make HTTP GET to QNXT appeals API."
+          },
+          "Check_Appeal_Status": {
+            "type": "Compose",
+            "inputs": {
+              "appealExists": "pending",
+              "currentStatus": "unknown",
+              "canUpdate": "pending"
+            },
+            "runAfter": {
+              "Query_QNXT_For_Appeal": ["Succeeded"]
+            },
+            "description": "TODO: Validate appeal is in a state that allows updates (not WITHDRAWN, not COMPLETED)"
+          }
+        },
+        "runAfter": {
+          "Log_Update_Request": ["Succeeded"]
+        },
+        "description": "TODO: Complete appeal existence validation"
+      },
+      "Validate_Update_Type": {
+        "type": "Switch",
+        "expression": "@triggerBody()?['updateType']",
+        "cases": {
+          "ADDITIONAL_DOCUMENTATION": {
+            "case": "ADDITIONAL_DOCUMENTATION",
+            "actions": {
+              "Verify_Additional_Documents": {
+                "type": "Compose",
+                "inputs": {
+                  "documentCount": "@length(triggerBody()?['additionalAttachments'])",
+                  "dmsEndpoint": "@parameters('dms_endpoint')"
+                },
+                "runAfter": {},
+                "description": "TODO: Verify additional documents exist in DMS and are within size limits"
+              }
+            }
+          },
+          "WITHDRAWAL": {
+            "case": "WITHDRAWAL",
+            "actions": {
+              "Validate_Withdrawal": {
+                "type": "Compose",
+                "inputs": {
+                  "withdrawalReason": "@triggerBody()?['withdrawalRequest']?['withdrawalReason']",
+                  "effectiveDate": "@triggerBody()?['withdrawalRequest']?['effectiveDate']"
+                },
+                "runAfter": {},
+                "description": "TODO: Validate withdrawal request details"
+              }
+            }
+          },
+          "ESCALATION": {
+            "case": "ESCALATION",
+            "actions": {
+              "Validate_Escalation": {
+                "type": "Compose",
+                "inputs": {
+                  "escalationReason": "@triggerBody()?['escalationRequest']?['escalationReason']",
+                  "urgencyLevel": "@triggerBody()?['escalationRequest']?['urgencyLevel']"
+                },
+                "runAfter": {},
+                "description": "TODO: Validate escalation request details and urgency level"
+              }
+            }
+          }
+        },
+        "default": {
+          "actions": {
+            "Process_Standard_Update": {
+              "type": "Compose",
+              "inputs": {
+                "updateType": "@triggerBody()?['updateType']"
+              },
+              "runAfter": {},
+              "description": "TODO: Process other update types (CORRECTED_INFORMATION, STATUS_INQUIRY, ADDITIONAL_REASON)"
+            }
+          }
+        },
+        "runAfter": {
+          "Validate_Appeal_Exists": ["Succeeded"]
+        },
+        "description": "TODO: Branch logic based on update type"
+      },
+      "Submit_Update_To_Availity": {
+        "type": "Scope",
+        "actions": {
+          "Prepare_Update_Payload": {
+            "type": "Compose",
+            "inputs": {
+              "appealId": "@triggerBody()?['appealId']",
+              "updateType": "@triggerBody()?['updateType']",
+              "updateReason": "@triggerBody()?['updateReason']",
+              "updatedBy": "@triggerBody()?['updatedBy']"
+            },
+            "runAfter": {},
+            "description": "TODO: Transform update request to Availity Bedlam API format"
+          },
+          "Call_Availity_Update_API": {
+            "type": "Compose",
+            "inputs": {
+              "availityEndpoint": "@parameters('availity_endpoint')",
+              "payload": "@outputs('Prepare_Update_Payload')"
+            },
+            "runAfter": {
+              "Prepare_Update_Payload": ["Succeeded"]
+            },
+            "description": "TODO: Make HTTP PUT/POST call to Availity Bedlam API to update appeal. Include authentication and retry policy."
+          },
+          "Parse_Update_Response": {
+            "type": "ParseJson",
+            "inputs": {
+              "content": "@outputs('Call_Availity_Update_API')",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "updateStatus": { "type": "string" },
+                  "message": { "type": "string" }
+                }
+              }
+            },
+            "runAfter": {
+              "Call_Availity_Update_API": ["Succeeded"]
+            },
+            "description": "TODO: Parse Availity update response"
+          }
+        },
+        "runAfter": {
+          "Validate_Update_Type": ["Succeeded"]
+        },
+        "description": "TODO: Complete Availity update submission"
+      },
+      "Update_QNXT_Record": {
+        "type": "Scope",
+        "actions": {
+          "Update_Appeal_In_QNXT": {
+            "type": "Compose",
+            "inputs": {
+              "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+              "appealId": "@triggerBody()?['appealId']",
+              "updateType": "@triggerBody()?['updateType']",
+              "updateTimestamp": "@utcNow()"
+            },
+            "runAfter": {},
+            "description": "TODO: Update appeal record in QNXT with update details. Make HTTP PUT to QNXT appeals API."
+          },
+          "Add_Update_History": {
+            "type": "Compose",
+            "inputs": {
+              "historyEntry": {
+                "updateType": "@triggerBody()?['updateType']",
+                "updateReason": "@triggerBody()?['updateReason']",
+                "timestamp": "@utcNow()",
+                "updatedBy": "@triggerBody()?['updatedBy']"
+              }
+            },
+            "runAfter": {
+              "Update_Appeal_In_QNXT": ["Succeeded"]
+            },
+            "description": "TODO: Add update to appeal history in QNXT"
+          }
+        },
+        "runAfter": {
+          "Submit_Update_To_Availity": ["Succeeded"]
+        },
+        "description": "TODO: Complete QNXT update workflow"
+      },
+      "Build_Success_Response": {
+        "type": "Compose",
+        "inputs": {
+          "appealId": "@triggerBody()?['appealId']",
+          "status": "UPDATED",
+          "updateType": "@triggerBody()?['updateType']",
+          "updatedAt": "@utcNow()",
+          "availityUpdateStatus": "@outputs('Parse_Update_Response')?['updateStatus']",
+          "message": "Appeal update submitted successfully",
+          "metadata": {
+            "correlationId": "@variables('correlationId')",
+            "workflowRunId": "@workflow().run.name"
+          }
+        },
+        "runAfter": {
+          "Update_QNXT_Record": ["Succeeded"]
+        },
+        "description": "TODO: Build update response"
+      },
+      "Log_Success": {
+        "type": "Compose",
+        "inputs": {
+          "level": "INFO",
+          "message": "Appeal update successful",
+          "appealId": "@triggerBody()?['appealId']",
+          "correlationId": "@variables('correlationId')"
+        },
+        "runAfter": {
+          "Build_Success_Response": ["Succeeded"]
+        },
+        "description": "TODO: Send to Application Insights"
+      },
+      "Response_Success": {
+        "type": "Response",
+        "kind": "Http",
+        "inputs": {
+          "statusCode": 200,
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Correlation-Id": "@variables('correlationId')"
+          },
+          "body": "@outputs('Build_Success_Response')"
+        },
+        "runAfter": {
+          "Log_Success": ["Succeeded"]
+        }
+      },
+      "Catch_Errors": {
+        "type": "Scope",
+        "actions": {
+          "Build_Error_Response": {
+            "type": "Compose",
+            "inputs": {
+              "appealId": "@triggerBody()?['appealId']",
+              "status": "UPDATE_FAILED",
+              "error": "Appeal update failed",
+              "metadata": {
+                "correlationId": "@variables('correlationId')",
+                "workflowRunId": "@workflow().run.name"
+              }
+            },
+            "runAfter": {},
+            "description": "TODO: Build detailed error response"
+          },
+          "Log_Error": {
+            "type": "Compose",
+            "inputs": {
+              "level": "ERROR",
+              "message": "Appeal update failed",
+              "appealId": "@triggerBody()?['appealId']",
+              "correlationId": "@variables('correlationId')"
+            },
+            "runAfter": {
+              "Build_Error_Response": ["Succeeded"]
+            },
+            "description": "TODO: Send error to Application Insights"
+          },
+          "Response_Error": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 500,
+              "headers": {
+                "Content-Type": "application/json",
+                "X-Correlation-Id": "@variables('correlationId')"
+              },
+              "body": "@outputs('Build_Error_Response')"
+            },
+            "runAfter": {
+              "Log_Error": ["Succeeded"]
+            }
+          }
+        },
+        "runAfter": {
+          "Update_QNXT_Record": ["Failed", "Skipped", "TimedOut"]
+        },
+        "description": "TODO: Enhanced error handling with specific error codes"
+      }
+    },
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "type": "object",
+        "defaultValue": {}
+      },
+      "qnxt_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "availity_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "dms_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      }
+    }
+  },
+  "kind": "Stateful",
+  "parameters": {
+    "$connections": {
+      "value": {}
+    },
+    "qnxt_endpoint": {
+      "value": "https://qnxt.example.com/api/appeals"
+    },
+    "availity_endpoint": {
+      "value": "https://api.availity.com/bedlam/v1/appeals"
+    },
+    "dms_endpoint": {
+      "value": "https://dms.example.com/api/documents"
+    }
+  }
+}

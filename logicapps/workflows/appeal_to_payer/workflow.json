@@ -1,0 +1,401 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/schemas/2023-01-31-preview/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "HTTP_Appeal_To_Payer_Request": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "$ref": "file://schemas/Appeal-ToPayer-Request.json"
+          },
+          "method": "POST"
+        },
+        "operationOptions": "EnableSchemaValidation"
+      }
+    },
+    "actions": {
+      "Initialize_Variables": {
+        "type": "Scope",
+        "actions": {
+          "Set_CorrelationId": {
+            "type": "InitializeVariable",
+            "inputs": {
+              "variables": [
+                {
+                  "name": "correlationId",
+                  "type": "string",
+                  "value": "@{coalesce(triggerBody()?['metadata']?['correlationId'], guid())}"
+                }
+              ]
+            },
+            "runAfter": {}
+          },
+          "Set_AppealId": {
+            "type": "InitializeVariable",
+            "inputs": {
+              "variables": [
+                {
+                  "name": "appealId",
+                  "type": "string",
+                  "value": "@{concat('APL-', utcNow('yyyyMMddHHmmss'), '-', substring(guid(), 0, 6))}"
+                }
+              ]
+            },
+            "runAfter": {
+              "Set_CorrelationId": ["Succeeded"]
+            }
+          }
+        },
+        "runAfter": {}
+      },
+      "Log_Request_Received": {
+        "type": "Compose",
+        "inputs": {
+          "message": "Appeal to Payer request received",
+          "correlationId": "@variables('correlationId')",
+          "appealId": "@variables('appealId')",
+          "claimNumber": "@triggerBody()?['claimNumber']",
+          "memberId": "@triggerBody()?['memberId']"
+        },
+        "runAfter": {
+          "Initialize_Variables": ["Succeeded"]
+        },
+        "description": "TODO: Send to Application Insights for tracking"
+      },
+      "Validate_Request_Schema": {
+        "type": "Compose",
+        "inputs": {
+          "validationStatus": "pending",
+          "schemaVersion": "1.0",
+          "requiredFields": ["claimNumber", "memberId", "appealReason", "appealDate", "requestedBy"]
+        },
+        "runAfter": {
+          "Log_Request_Received": ["Succeeded"]
+        },
+        "description": "TODO: Implement comprehensive schema validation against Appeal-ToPayer-Request.json. Validate field formats, sizes, enums, and required fields."
+      },
+      "DMS_Document_Verification": {
+        "type": "Scope",
+        "actions": {
+          "Check_Attachments_Exist": {
+            "type": "Compose",
+            "inputs": {
+              "attachmentCount": "@length(triggerBody()?['attachments'])",
+              "totalSize": 0,
+              "maxSizeBytes": 10485760,
+              "maxFileCount": 10
+            },
+            "runAfter": {},
+            "description": "TODO: Verify attachment count and sizes against limits"
+          },
+          "Query_DMS_For_Documents": {
+            "type": "Compose",
+            "inputs": {
+              "dmsEndpoint": "@parameters('dms_endpoint')",
+              "documentsToVerify": "@triggerBody()?['attachments']"
+            },
+            "runAfter": {
+              "Check_Attachments_Exist": ["Succeeded"]
+            },
+            "description": "TODO: Query DMS (Document Management System) to verify documents exist in Data Lake. Use HTTP action to call DMS API with authentication."
+          },
+          "Verify_Document_Integrity": {
+            "type": "Compose",
+            "inputs": {
+              "verificationStatus": "pending",
+              "documentsVerified": 0
+            },
+            "runAfter": {
+              "Query_DMS_For_Documents": ["Succeeded"]
+            },
+            "description": "TODO: Verify document integrity (checksums, file types, sizes). Ensure all documents are accessible and within size limits."
+          }
+        },
+        "runAfter": {
+          "Validate_Request_Schema": ["Succeeded"]
+        },
+        "description": "TODO: Complete DMS verification workflow. If any document fails verification, fail workflow with appropriate error message."
+      },
+      "QNXT_Claim_Validation": {
+        "type": "Scope",
+        "actions": {
+          "Call_QNXT_Claim_API": {
+            "type": "Compose",
+            "inputs": {
+              "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+              "claimNumber": "@triggerBody()?['claimNumber']",
+              "memberId": "@triggerBody()?['memberId']"
+            },
+            "runAfter": {},
+            "description": "TODO: Make HTTP POST/GET call to QNXT API to verify claim exists and is eligible for appeal. Include retry policy (4 attempts, 15-second intervals)."
+          },
+          "Validate_Claim_Status": {
+            "type": "Compose",
+            "inputs": {
+              "claimExists": "pending",
+              "claimStatus": "unknown",
+              "appealEligible": "pending"
+            },
+            "runAfter": {
+              "Call_QNXT_Claim_API": ["Succeeded"]
+            },
+            "description": "TODO: Parse QNXT response and validate claim status. Check if claim is in a state that allows appeals (e.g., DENIED, PARTIALLY_PAID)."
+          },
+          "Check_Member_Eligibility": {
+            "type": "Compose",
+            "inputs": {
+              "memberActive": "pending",
+              "eligibilityVerified": "pending"
+            },
+            "runAfter": {
+              "Validate_Claim_Status": ["Succeeded"]
+            },
+            "description": "TODO: Verify member eligibility at time of service. Query QNXT eligibility API."
+          }
+        },
+        "runAfter": {
+          "DMS_Document_Verification": ["Succeeded"]
+        },
+        "description": "TODO: Complete QNXT validation. If claim doesn't exist or is not eligible for appeal, return error response."
+      },
+      "Submit_To_Availity_Bedlam": {
+        "type": "Scope",
+        "actions": {
+          "Prepare_Availity_Payload": {
+            "type": "Compose",
+            "inputs": {
+              "appealId": "@variables('appealId')",
+              "claimNumber": "@triggerBody()?['claimNumber']",
+              "memberId": "@triggerBody()?['memberId']",
+              "appealReason": "@triggerBody()?['appealReason']",
+              "appealDate": "@triggerBody()?['appealDate']",
+              "requestedBy": "@triggerBody()?['requestedBy']",
+              "attachments": "@triggerBody()?['attachments']"
+            },
+            "runAfter": {},
+            "description": "TODO: Transform internal appeal request to Availity Bedlam API format. Map fields to Availity's expected schema."
+          },
+          "Call_Availity_Bedlam_API": {
+            "type": "Compose",
+            "inputs": {
+              "availityEndpoint": "@parameters('availity_endpoint')",
+              "payload": "@outputs('Prepare_Availity_Payload')"
+            },
+            "runAfter": {
+              "Prepare_Availity_Payload": ["Succeeded"]
+            },
+            "description": "TODO: Make HTTP POST call to Availity Bedlam API. Include authentication headers (bearer token from Key Vault). Set timeout to 60 seconds with retry policy."
+          },
+          "Parse_Availity_Response": {
+            "type": "ParseJson",
+            "inputs": {
+              "content": "@outputs('Call_Availity_Bedlam_API')",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "availityReferenceNumber": { "type": "string" },
+                  "status": { "type": "string" }
+                }
+              }
+            },
+            "runAfter": {
+              "Call_Availity_Bedlam_API": ["Succeeded"]
+            },
+            "description": "TODO: Parse Availity response and extract reference number and status."
+          }
+        },
+        "runAfter": {
+          "QNXT_Claim_Validation": ["Succeeded"]
+        },
+        "description": "TODO: Complete Availity submission. Handle API errors gracefully with appropriate error messages."
+      },
+      "Update_QNXT_With_Appeal": {
+        "type": "Scope",
+        "actions": {
+          "Register_Appeal_In_QNXT": {
+            "type": "Compose",
+            "inputs": {
+              "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+              "appealId": "@variables('appealId')",
+              "claimNumber": "@triggerBody()?['claimNumber']",
+              "availityReference": "@outputs('Parse_Availity_Response')?['availityReferenceNumber']"
+            },
+            "runAfter": {},
+            "description": "TODO: Register appeal in QNXT system. Make HTTP POST to QNXT appeals registration endpoint."
+          },
+          "Update_Claim_Status": {
+            "type": "Compose",
+            "inputs": {
+              "claimStatus": "APPEAL_SUBMITTED"
+            },
+            "runAfter": {
+              "Register_Appeal_In_QNXT": ["Succeeded"]
+            },
+            "description": "TODO: Update claim status in QNXT to reflect appeal submission."
+          }
+        },
+        "runAfter": {
+          "Submit_To_Availity_Bedlam": ["Succeeded"]
+        },
+        "description": "TODO: Complete QNXT update workflow. Handle errors if QNXT update fails."
+      },
+      "Build_Success_Response": {
+        "type": "Compose",
+        "inputs": {
+          "appealId": "@variables('appealId')",
+          "claimNumber": "@triggerBody()?['claimNumber']",
+          "memberId": "@triggerBody()?['memberId']",
+          "status": "SUBMITTED",
+          "availityReferenceNumber": "@outputs('Parse_Availity_Response')?['availityReferenceNumber']",
+          "submittedAt": "@utcNow()",
+          "expectedResponseDate": "@addDays(utcNow(), 30)",
+          "validationResults": {
+            "dmsVerification": {
+              "passed": true,
+              "message": "All documents verified",
+              "verifiedAt": "@utcNow()"
+            },
+            "qnxtValidation": {
+              "passed": true,
+              "claimExists": true,
+              "eligibilityVerified": true,
+              "message": "Claim validated successfully"
+            }
+          },
+          "metadata": {
+            "correlationId": "@variables('correlationId')",
+            "processingTimeMs": 0,
+            "workflowRunId": "@workflow().run.name"
+          }
+        },
+        "runAfter": {
+          "Update_QNXT_With_Appeal": ["Succeeded"]
+        },
+        "description": "TODO: Build response conforming to Appeal-ToPayer-Response.json schema"
+      },
+      "Log_Success": {
+        "type": "Compose",
+        "inputs": {
+          "level": "INFO",
+          "message": "Appeal submitted successfully",
+          "appealId": "@variables('appealId')",
+          "correlationId": "@variables('correlationId')"
+        },
+        "runAfter": {
+          "Build_Success_Response": ["Succeeded"]
+        },
+        "description": "TODO: Send success log to Application Insights"
+      },
+      "Response_Success": {
+        "type": "Response",
+        "kind": "Http",
+        "inputs": {
+          "statusCode": 200,
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Correlation-Id": "@variables('correlationId')"
+          },
+          "body": "@outputs('Build_Success_Response')"
+        },
+        "runAfter": {
+          "Log_Success": ["Succeeded"]
+        }
+      },
+      "Catch_Errors": {
+        "type": "Scope",
+        "actions": {
+          "Build_Error_Response": {
+            "type": "Compose",
+            "inputs": {
+              "appealId": "@variables('appealId')",
+              "status": "FAILED",
+              "submittedAt": "@utcNow()",
+              "errors": [
+                {
+                  "code": "PROCESSING_ERROR",
+                  "message": "@{result('Submit_To_Availity_Bedlam')?[0]?['error']?['message']}",
+                  "severity": "ERROR"
+                }
+              ],
+              "metadata": {
+                "correlationId": "@variables('correlationId')",
+                "workflowRunId": "@workflow().run.name"
+              }
+            },
+            "runAfter": {},
+            "description": "TODO: Build detailed error response with specific error codes and messages"
+          },
+          "Log_Error": {
+            "type": "Compose",
+            "inputs": {
+              "level": "ERROR",
+              "message": "Appeal submission failed",
+              "appealId": "@variables('appealId')",
+              "correlationId": "@variables('correlationId')",
+              "error": "@outputs('Build_Error_Response')"
+            },
+            "runAfter": {
+              "Build_Error_Response": ["Succeeded"]
+            },
+            "description": "TODO: Send error log to Application Insights with full context"
+          },
+          "Response_Error": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 500,
+              "headers": {
+                "Content-Type": "application/json",
+                "X-Correlation-Id": "@variables('correlationId')"
+              },
+              "body": "@outputs('Build_Error_Response')"
+            },
+            "runAfter": {
+              "Log_Error": ["Succeeded"]
+            }
+          }
+        },
+        "runAfter": {
+          "Update_QNXT_With_Appeal": ["Failed", "Skipped", "TimedOut"]
+        },
+        "description": "TODO: Enhanced error handling with specific error codes for different failure scenarios (DMS failure, QNXT failure, Availity failure)"
+      }
+    },
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "type": "object",
+        "defaultValue": {}
+      },
+      "qnxt_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "availity_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "dms_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      }
+    }
+  },
+  "kind": "Stateful",
+  "parameters": {
+    "$connections": {
+      "value": {}
+    },
+    "qnxt_endpoint": {
+      "value": "https://qnxt.example.com/api/claims"
+    },
+    "availity_endpoint": {
+      "value": "https://api.availity.com/bedlam/v1/appeals"
+    },
+    "dms_endpoint": {
+      "value": "https://dms.example.com/api/documents"
+    }
+  }
+}

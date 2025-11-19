@@ -1,0 +1,453 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/schemas/2023-01-31-preview/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "HTTP_Availity_Webhook": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "eventType": { "type": "string" },
+              "appealId": { "type": "string" },
+              "availityReferenceNumber": { "type": "string" },
+              "status": { "type": "string" },
+              "decision": { "type": "object" },
+              "timestamp": { "type": "string" }
+            },
+            "required": ["eventType", "appealId", "status"]
+          },
+          "method": "POST"
+        },
+        "operationOptions": "EnableSchemaValidation",
+        "description": "Webhook endpoint for receiving appeal status updates from Availity Bedlam API"
+      }
+    },
+    "actions": {
+      "Initialize_Variables": {
+        "type": "Scope",
+        "actions": {
+          "Set_CorrelationId": {
+            "type": "InitializeVariable",
+            "inputs": {
+              "variables": [
+                {
+                  "name": "correlationId",
+                  "type": "string",
+                  "value": "@{guid()}"
+                }
+              ]
+            },
+            "runAfter": {}
+          },
+          "Set_EventType": {
+            "type": "InitializeVariable",
+            "inputs": {
+              "variables": [
+                {
+                  "name": "eventType",
+                  "type": "string",
+                  "value": "@{triggerBody()?['eventType']}"
+                }
+              ]
+            },
+            "runAfter": {
+              "Set_CorrelationId": ["Succeeded"]
+            }
+          }
+        },
+        "runAfter": {}
+      },
+      "Log_Webhook_Received": {
+        "type": "Compose",
+        "inputs": {
+          "message": "Availity webhook received",
+          "correlationId": "@variables('correlationId')",
+          "eventType": "@variables('eventType')",
+          "appealId": "@triggerBody()?['appealId']",
+          "status": "@triggerBody()?['status']"
+        },
+        "runAfter": {
+          "Initialize_Variables": ["Succeeded"]
+        },
+        "description": "TODO: Send to Application Insights for webhook tracking"
+      },
+      "Validate_Webhook_Signature": {
+        "type": "Compose",
+        "inputs": {
+          "signatureValid": "pending",
+          "headers": "@triggerOutputs()?['headers']"
+        },
+        "runAfter": {
+          "Log_Webhook_Received": ["Succeeded"]
+        },
+        "description": "TODO: Validate webhook signature from Availity to ensure authenticity. Check X-Availity-Signature header against shared secret."
+      },
+      "Lookup_Appeal_In_QNXT": {
+        "type": "Scope",
+        "actions": {
+          "Query_QNXT_By_AppealId": {
+            "type": "Compose",
+            "inputs": {
+              "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+              "appealId": "@triggerBody()?['appealId']"
+            },
+            "runAfter": {},
+            "description": "TODO: Query QNXT to find appeal by appealId or availityReferenceNumber. Make HTTP GET with retry policy."
+          },
+          "Validate_Appeal_Exists": {
+            "type": "If",
+            "expression": {
+              "and": [
+                {
+                  "not": {
+                    "equals": [
+                      "@outputs('Query_QNXT_By_AppealId')",
+                      null
+                    ]
+                  }
+                }
+              ]
+            },
+            "actions": {
+              "Set_Appeal_Found": {
+                "type": "Compose",
+                "inputs": {
+                  "appealFound": true,
+                  "qnxtAppealId": "@outputs('Query_QNXT_By_AppealId')?['appealId']"
+                },
+                "runAfter": {},
+                "description": "Appeal found in QNXT"
+              }
+            },
+            "else": {
+              "actions": {
+                "Log_Appeal_Not_Found": {
+                  "type": "Compose",
+                  "inputs": {
+                    "appealFound": false,
+                    "error": "Appeal not found in QNXT",
+                    "appealId": "@triggerBody()?['appealId']"
+                  },
+                  "runAfter": {},
+                  "description": "Appeal not found - log warning but acknowledge webhook"
+                }
+              }
+            },
+            "runAfter": {
+              "Query_QNXT_By_AppealId": ["Succeeded"]
+            },
+            "description": "TODO: Validate appeal exists in QNXT. If not found, log warning but still acknowledge webhook."
+          }
+        },
+        "runAfter": {
+          "Validate_Webhook_Signature": ["Succeeded"]
+        },
+        "description": "TODO: Complete QNXT lookup"
+      },
+      "Process_Event_Type": {
+        "type": "Switch",
+        "expression": "@variables('eventType')",
+        "cases": {
+          "STATUS_UPDATE": {
+            "case": "STATUS_UPDATE",
+            "actions": {
+              "Update_Appeal_Status_In_QNXT": {
+                "type": "Compose",
+                "inputs": {
+                  "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+                  "appealId": "@triggerBody()?['appealId']",
+                  "newStatus": "@triggerBody()?['status']",
+                  "timestamp": "@triggerBody()?['timestamp']"
+                },
+                "runAfter": {},
+                "description": "TODO: Update appeal status in QNXT. Make HTTP PUT to QNXT appeals API."
+              },
+              "Add_Status_History": {
+                "type": "Compose",
+                "inputs": {
+                  "historyEntry": {
+                    "status": "@triggerBody()?['status']",
+                    "timestamp": "@triggerBody()?['timestamp']",
+                    "source": "AVAILITY_WEBHOOK",
+                    "note": "Status updated via Availity webhook"
+                  }
+                },
+                "runAfter": {
+                  "Update_Appeal_Status_In_QNXT": ["Succeeded"]
+                },
+                "description": "TODO: Add status change to appeal history"
+              }
+            }
+          },
+          "DECISION": {
+            "case": "DECISION",
+            "actions": {
+              "Update_Appeal_Decision_In_QNXT": {
+                "type": "Compose",
+                "inputs": {
+                  "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+                  "appealId": "@triggerBody()?['appealId']",
+                  "decision": "@triggerBody()?['decision']",
+                  "timestamp": "@triggerBody()?['timestamp']"
+                },
+                "runAfter": {},
+                "description": "TODO: Update appeal with decision details (APPROVED_FULL, APPROVED_PARTIAL, DENIED). Make HTTP PUT to QNXT."
+              },
+              "Update_Claim_Payment": {
+                "type": "If",
+                "expression": {
+                  "and": [
+                    {
+                      "not": {
+                        "equals": [
+                          "@triggerBody()?['decision']?['adjustedAmount']",
+                          null
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "actions": {
+                  "Adjust_Claim_Payment_In_QNXT": {
+                    "type": "Compose",
+                    "inputs": {
+                      "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+                      "claimNumber": "@outputs('Query_QNXT_By_AppealId')?['claimNumber']",
+                      "adjustedAmount": "@triggerBody()?['decision']?['adjustedAmount']"
+                    },
+                    "runAfter": {},
+                    "description": "TODO: If decision includes adjusted payment amount, update claim payment in QNXT"
+                  }
+                },
+                "else": {
+                  "actions": {
+                    "No_Payment_Adjustment": {
+                      "type": "Compose",
+                      "inputs": {
+                        "message": "No payment adjustment required"
+                      },
+                      "runAfter": {}
+                    }
+                  }
+                },
+                "runAfter": {
+                  "Update_Appeal_Decision_In_QNXT": ["Succeeded"]
+                },
+                "description": "TODO: Conditionally adjust claim payment if decision includes adjusted amount"
+              },
+              "Add_Decision_History": {
+                "type": "Compose",
+                "inputs": {
+                  "historyEntry": {
+                    "status": "DECISION_RECEIVED",
+                    "decision": "@triggerBody()?['decision']",
+                    "timestamp": "@triggerBody()?['timestamp']",
+                    "source": "AVAILITY_WEBHOOK"
+                  }
+                },
+                "runAfter": {
+                  "Update_Claim_Payment": ["Succeeded"]
+                },
+                "description": "TODO: Add decision to appeal history"
+              }
+            }
+          },
+          "CORRESPONDENCE": {
+            "case": "CORRESPONDENCE",
+            "actions": {
+              "Store_Correspondence_In_QNXT": {
+                "type": "Compose",
+                "inputs": {
+                  "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+                  "appealId": "@triggerBody()?['appealId']",
+                  "correspondence": "@triggerBody()?['correspondence']"
+                },
+                "runAfter": {},
+                "description": "TODO: Store correspondence message in QNXT appeal record. Make HTTP POST to QNXT correspondence API."
+              }
+            }
+          }
+        },
+        "default": {
+          "actions": {
+            "Log_Unknown_Event": {
+              "type": "Compose",
+              "inputs": {
+                "level": "WARNING",
+                "message": "Unknown event type received from Availity",
+                "eventType": "@variables('eventType')",
+                "appealId": "@triggerBody()?['appealId']"
+              },
+              "runAfter": {},
+              "description": "TODO: Log warning for unknown event types. Send to Application Insights."
+            }
+          }
+        },
+        "runAfter": {
+          "Lookup_Appeal_In_QNXT": ["Succeeded"]
+        },
+        "description": "TODO: Branch processing logic based on event type (STATUS_UPDATE, DECISION, CORRESPONDENCE)"
+      },
+      "Publish_Event_To_ServiceBus": {
+        "type": "Scope",
+        "actions": {
+          "Build_Event_Message": {
+            "type": "Compose",
+            "inputs": {
+              "eventType": "@variables('eventType')",
+              "appealId": "@triggerBody()?['appealId']",
+              "status": "@triggerBody()?['status']",
+              "decision": "@triggerBody()?['decision']",
+              "timestamp": "@triggerBody()?['timestamp']",
+              "source": "AVAILITY",
+              "correlationId": "@variables('correlationId')"
+            },
+            "runAfter": {},
+            "description": "TODO: Build event message for Service Bus"
+          },
+          "Send_To_Appeals_Updates_Topic": {
+            "type": "Compose",
+            "inputs": {
+              "serviceBusEndpoint": "@parameters('servicebus_namespace')",
+              "topic": "appeals-updates",
+              "message": "@outputs('Build_Event_Message')"
+            },
+            "runAfter": {
+              "Build_Event_Message": ["Succeeded"]
+            },
+            "description": "TODO: Publish event to Service Bus 'appeals-updates' topic for downstream consumers. Use Service Bus API connection."
+          }
+        },
+        "runAfter": {
+          "Process_Event_Type": ["Succeeded"]
+        },
+        "description": "TODO: Publish processed event to Service Bus for downstream systems"
+      },
+      "Build_Acknowledgment_Response": {
+        "type": "Compose",
+        "inputs": {
+          "status": "ACKNOWLEDGED",
+          "appealId": "@triggerBody()?['appealId']",
+          "eventType": "@variables('eventType')",
+          "processedAt": "@utcNow()",
+          "correlationId": "@variables('correlationId')"
+        },
+        "runAfter": {
+          "Publish_Event_To_ServiceBus": ["Succeeded"]
+        },
+        "description": "TODO: Build acknowledgment response for Availity"
+      },
+      "Log_Success": {
+        "type": "Compose",
+        "inputs": {
+          "level": "INFO",
+          "message": "Availity webhook processed successfully",
+          "eventType": "@variables('eventType')",
+          "appealId": "@triggerBody()?['appealId']",
+          "correlationId": "@variables('correlationId')"
+        },
+        "runAfter": {
+          "Build_Acknowledgment_Response": ["Succeeded"]
+        },
+        "description": "TODO: Send success log to Application Insights"
+      },
+      "Response_Success": {
+        "type": "Response",
+        "kind": "Http",
+        "inputs": {
+          "statusCode": 200,
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Correlation-Id": "@variables('correlationId')"
+          },
+          "body": "@outputs('Build_Acknowledgment_Response')"
+        },
+        "runAfter": {
+          "Log_Success": ["Succeeded"]
+        },
+        "description": "Return 200 OK to Availity to acknowledge webhook"
+      },
+      "Catch_Errors": {
+        "type": "Scope",
+        "actions": {
+          "Build_Error_Response": {
+            "type": "Compose",
+            "inputs": {
+              "status": "ERROR",
+              "message": "Failed to process Availity webhook",
+              "eventType": "@variables('eventType')",
+              "appealId": "@triggerBody()?['appealId']",
+              "correlationId": "@variables('correlationId')"
+            },
+            "runAfter": {},
+            "description": "TODO: Build error response"
+          },
+          "Log_Error": {
+            "type": "Compose",
+            "inputs": {
+              "level": "ERROR",
+              "message": "Availity webhook processing failed",
+              "eventType": "@variables('eventType')",
+              "appealId": "@triggerBody()?['appealId']",
+              "correlationId": "@variables('correlationId')"
+            },
+            "runAfter": {
+              "Build_Error_Response": ["Succeeded"]
+            },
+            "description": "TODO: Send error to Application Insights. Consider dead-letter queue for failed webhooks."
+          },
+          "Response_Error": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 500,
+              "headers": {
+                "Content-Type": "application/json",
+                "X-Correlation-Id": "@variables('correlationId')"
+              },
+              "body": "@outputs('Build_Error_Response')"
+            },
+            "runAfter": {
+              "Log_Error": ["Succeeded"]
+            },
+            "description": "Return 500 to Availity - they may retry webhook"
+          }
+        },
+        "runAfter": {
+          "Publish_Event_To_ServiceBus": ["Failed", "Skipped", "TimedOut"]
+        },
+        "description": "TODO: Enhanced error handling. Consider idempotency - same webhook may be retried by Availity."
+      }
+    },
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "type": "object",
+        "defaultValue": {}
+      },
+      "qnxt_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "servicebus_namespace": {
+        "type": "string",
+        "defaultValue": ""
+      }
+    }
+  },
+  "kind": "Stateful",
+  "parameters": {
+    "$connections": {
+      "value": {}
+    },
+    "qnxt_endpoint": {
+      "value": "https://qnxt.example.com/api/appeals"
+    },
+    "servicebus_namespace": {
+      "value": "hipaa-logic-svc"
+    }
+  }
+}

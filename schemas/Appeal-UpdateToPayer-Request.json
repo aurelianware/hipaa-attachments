@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aurelianware.com/schemas/Appeal-UpdateToPayer-Request.json",
+  "title": "Appeal Update To Payer Request",
+  "description": "Request schema for updating an existing appeal with additional information",
+  "type": "object",
+  "required": [
+    "appealId",
+    "updateType",
+    "updatedBy"
+  ],
+  "properties": {
+    "appealId": {
+      "type": "string",
+      "description": "Unique identifier for the appeal to update",
+      "pattern": "^APL-[A-Z0-9]{10,20}$"
+    },
+    "updateType": {
+      "type": "string",
+      "description": "Type of update being made",
+      "enum": [
+        "ADDITIONAL_DOCUMENTATION",
+        "CORRECTED_INFORMATION",
+        "ADDITIONAL_REASON",
+        "STATUS_INQUIRY",
+        "WITHDRAWAL",
+        "ESCALATION"
+      ]
+    },
+    "updateReason": {
+      "type": "string",
+      "description": "Reason for the update",
+      "maxLength": 1000
+    },
+    "updatedBy": {
+      "type": "object",
+      "description": "Information about who is updating the appeal",
+      "required": ["name", "role"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": ["PROVIDER", "MEMBER", "AUTHORIZED_REPRESENTATIVE", "SYSTEM"]
+        },
+        "contactPhone": {
+          "type": "string",
+          "pattern": "^\\+?[0-9]{10,15}$"
+        },
+        "contactEmail": {
+          "type": "string",
+          "format": "email"
+        }
+      }
+    },
+    "additionalAttachments": {
+      "type": "array",
+      "description": "New supporting documents to add",
+      "items": {
+        "type": "object",
+        "required": ["fileName", "dataLakePath", "fileSize"],
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "dataLakePath": {
+            "type": "string",
+            "pattern": "^hipaa-attachments/",
+            "maxLength": 500
+          },
+          "fileSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10485760
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": ["application/pdf", "image/jpeg", "image/png", "image/tiff", "text/plain"]
+          },
+          "uploadDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "maxItems": 10
+    },
+    "correctedInformation": {
+      "type": "object",
+      "description": "Corrected information for the appeal",
+      "properties": {
+        "appealReason": {
+          "type": "string",
+          "enum": [
+            "DENIED_CLAIM",
+            "PARTIAL_PAYMENT",
+            "CODING_DISPUTE",
+            "MEDICAL_NECESSITY",
+            "TIMELY_FILING",
+            "AUTHORIZATION_ISSUE",
+            "OUT_OF_NETWORK",
+            "COORDINATION_OF_BENEFITS",
+            "DUPLICATE_CLAIM",
+            "OTHER"
+          ]
+        },
+        "appealReasonDescription": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "serviceFromDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "serviceToDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "providerNpi": {
+          "type": "string",
+          "pattern": "^[0-9]{10}$"
+        }
+      }
+    },
+    "withdrawalRequest": {
+      "type": "object",
+      "description": "Details if this is a withdrawal request",
+      "properties": {
+        "withdrawalReason": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "effectiveDate": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "escalationRequest": {
+      "type": "object",
+      "description": "Details if this is an escalation request",
+      "properties": {
+        "escalationReason": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "urgencyLevel": {
+          "type": "string",
+          "enum": ["URGENT", "EXPEDITED"]
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for tracking",
+      "properties": {
+        "correlationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "updateTimestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateSource": {
+          "type": "string",
+          "enum": ["PORTAL", "API", "MANUAL", "SYSTEM"]
+        }
+      }
+    }
+  }
+}

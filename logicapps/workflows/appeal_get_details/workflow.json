@@ -1,0 +1,408 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/schemas/2023-01-31-preview/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "HTTP_Get_Appeal_Details": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "$ref": "file://schemas/Appeal-GetDetails-Request.json"
+          },
+          "method": "GET"
+        },
+        "operationOptions": "EnableSchemaValidation"
+      }
+    },
+    "actions": {
+      "Initialize_Variables": {
+        "type": "Scope",
+        "actions": {
+          "Set_CorrelationId": {
+            "type": "InitializeVariable",
+            "inputs": {
+              "variables": [
+                {
+                  "name": "correlationId",
+                  "type": "string",
+                  "value": "@{coalesce(triggerBody()?['metadata']?['correlationId'], guid())}"
+                }
+              ]
+            },
+            "runAfter": {}
+          }
+        },
+        "runAfter": {}
+      },
+      "Log_Details_Request": {
+        "type": "Compose",
+        "inputs": {
+          "message": "Appeal details request received",
+          "correlationId": "@variables('correlationId')",
+          "appealId": "@triggerBody()?['appealId']"
+        },
+        "runAfter": {
+          "Initialize_Variables": ["Succeeded"]
+        },
+        "description": "TODO: Send to Application Insights"
+      },
+      "Query_QNXT_For_Appeal_Details": {
+        "type": "Scope",
+        "actions": {
+          "Get_Appeal_From_QNXT": {
+            "type": "Compose",
+            "inputs": {
+              "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+              "appealId": "@triggerBody()?['appealId']",
+              "includeHistory": "@triggerBody()?['includeHistory']"
+            },
+            "runAfter": {},
+            "description": "TODO: Make HTTP GET call to QNXT appeals API to retrieve full appeal details. Include retry policy."
+          },
+          "Parse_QNXT_Response": {
+            "type": "ParseJson",
+            "inputs": {
+              "content": "@outputs('Get_Appeal_From_QNXT')",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "appealId": { "type": "string" },
+                  "claimNumber": { "type": "string" },
+                  "memberId": { "type": "string" },
+                  "status": { "type": "string" },
+                  "submittedAt": { "type": "string" }
+                }
+              }
+            },
+            "runAfter": {
+              "Get_Appeal_From_QNXT": ["Succeeded"]
+            },
+            "description": "TODO: Parse QNXT response with appeal details"
+          },
+          "Validate_Appeal_Exists": {
+            "type": "If",
+            "expression": {
+              "and": [
+                {
+                  "not": {
+                    "equals": [
+                      "@outputs('Parse_QNXT_Response')?['appealId']",
+                      null
+                    ]
+                  }
+                }
+              ]
+            },
+            "actions": {
+              "Set_Appeal_Found": {
+                "type": "Compose",
+                "inputs": {
+                  "appealFound": true
+                },
+                "runAfter": {},
+                "description": "Appeal exists in QNXT"
+              }
+            },
+            "else": {
+              "actions": {
+                "Set_Appeal_Not_Found": {
+                  "type": "Compose",
+                  "inputs": {
+                    "appealFound": false,
+                    "error": "Appeal not found"
+                  },
+                  "runAfter": {},
+                  "description": "Appeal does not exist - return 404"
+                }
+              }
+            },
+            "runAfter": {
+              "Parse_QNXT_Response": ["Succeeded"]
+            },
+            "description": "TODO: Check if appeal exists, return 404 if not found"
+          }
+        },
+        "runAfter": {
+          "Log_Details_Request": ["Succeeded"]
+        },
+        "description": "TODO: Complete QNXT query for appeal details"
+      },
+      "Query_Availity_For_Status": {
+        "type": "Scope",
+        "actions": {
+          "Get_Status_From_Availity": {
+            "type": "Compose",
+            "inputs": {
+              "availityEndpoint": "@parameters('availity_endpoint')",
+              "appealId": "@triggerBody()?['appealId']",
+              "availityReferenceNumber": "@outputs('Parse_QNXT_Response')?['availityReferenceNumber']"
+            },
+            "runAfter": {},
+            "description": "TODO: Query Availity Bedlam API for current appeal status and any payer updates. Include authentication."
+          },
+          "Parse_Availity_Status": {
+            "type": "ParseJson",
+            "inputs": {
+              "content": "@outputs('Get_Status_From_Availity')",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string" },
+                  "payerReferenceNumber": { "type": "string" },
+                  "lastUpdated": { "type": "string" }
+                }
+              }
+            },
+            "runAfter": {
+              "Get_Status_From_Availity": ["Succeeded"]
+            },
+            "description": "TODO: Parse Availity status response"
+          }
+        },
+        "runAfter": {
+          "Query_QNXT_For_Appeal_Details": ["Succeeded"]
+        },
+        "description": "TODO: Query Availity for latest status (optional - may be cached in QNXT)"
+      },
+      "Retrieve_Attachments_If_Requested": {
+        "type": "If",
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['includeAttachments']",
+                true
+              ]
+            }
+          ]
+        },
+        "actions": {
+          "Query_DMS_For_Attachments": {
+            "type": "Compose",
+            "inputs": {
+              "dmsEndpoint": "@parameters('dms_endpoint')",
+              "appealId": "@triggerBody()?['appealId']"
+            },
+            "runAfter": {},
+            "description": "TODO: Query DMS API to retrieve attachment metadata for the appeal"
+          },
+          "Build_Attachments_List": {
+            "type": "Compose",
+            "inputs": {
+              "attachments": "@outputs('Query_DMS_For_Attachments')"
+            },
+            "runAfter": {
+              "Query_DMS_For_Attachments": ["Succeeded"]
+            },
+            "description": "TODO: Build attachments array for response"
+          }
+        },
+        "else": {
+          "actions": {
+            "Skip_Attachments": {
+              "type": "Compose",
+              "inputs": {
+                "attachments": []
+              },
+              "runAfter": {},
+              "description": "Attachments not requested"
+            }
+          }
+        },
+        "runAfter": {
+          "Query_Availity_For_Status": ["Succeeded"]
+        },
+        "description": "TODO: Conditionally retrieve attachment metadata if requested"
+      },
+      "Retrieve_History_If_Requested": {
+        "type": "If",
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['includeHistory']",
+                true
+              ]
+            }
+          ]
+        },
+        "actions": {
+          "Query_QNXT_For_History": {
+            "type": "Compose",
+            "inputs": {
+              "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+              "appealId": "@triggerBody()?['appealId']"
+            },
+            "runAfter": {},
+            "description": "TODO: Query QNXT for complete appeal history (status changes, updates, correspondence)"
+          },
+          "Build_History_List": {
+            "type": "Compose",
+            "inputs": {
+              "history": "@outputs('Query_QNXT_For_History')"
+            },
+            "runAfter": {
+              "Query_QNXT_For_History": ["Succeeded"]
+            },
+            "description": "TODO: Build history array for response"
+          }
+        },
+        "else": {
+          "actions": {
+            "Skip_History": {
+              "type": "Compose",
+              "inputs": {
+                "history": []
+              },
+              "runAfter": {},
+              "description": "History not requested"
+            }
+          }
+        },
+        "runAfter": {
+          "Retrieve_Attachments_If_Requested": ["Succeeded"]
+        },
+        "description": "TODO: Conditionally retrieve history if requested"
+      },
+      "Build_Details_Response": {
+        "type": "Compose",
+        "inputs": {
+          "appealId": "@outputs('Parse_QNXT_Response')?['appealId']",
+          "claimNumber": "@outputs('Parse_QNXT_Response')?['claimNumber']",
+          "memberId": "@outputs('Parse_QNXT_Response')?['memberId']",
+          "providerNpi": "@outputs('Parse_QNXT_Response')?['providerNpi']",
+          "status": "@coalesce(outputs('Parse_Availity_Status')?['status'], outputs('Parse_QNXT_Response')?['status'])",
+          "appealReason": "@outputs('Parse_QNXT_Response')?['appealReason']",
+          "appealReasonDescription": "@outputs('Parse_QNXT_Response')?['appealReasonDescription']",
+          "submittedAt": "@outputs('Parse_QNXT_Response')?['submittedAt']",
+          "lastUpdatedAt": "@coalesce(outputs('Parse_Availity_Status')?['lastUpdated'], outputs('Parse_QNXT_Response')?['lastUpdatedAt'])",
+          "availityReferenceNumber": "@outputs('Parse_QNXT_Response')?['availityReferenceNumber']",
+          "payerReferenceNumber": "@outputs('Parse_Availity_Status')?['payerReferenceNumber']",
+          "attachments": "@if(triggerBody()?['includeAttachments'], outputs('Build_Attachments_List')?['attachments'], null)",
+          "history": "@if(triggerBody()?['includeHistory'], outputs('Build_History_List')?['history'], null)",
+          "metadata": {
+            "correlationId": "@variables('correlationId')",
+            "retrievedAt": "@utcNow()"
+          }
+        },
+        "runAfter": {
+          "Retrieve_History_If_Requested": ["Succeeded"]
+        },
+        "description": "TODO: Build response conforming to Appeal-GetDetails-Response.json schema"
+      },
+      "Log_Success": {
+        "type": "Compose",
+        "inputs": {
+          "level": "INFO",
+          "message": "Appeal details retrieved successfully",
+          "appealId": "@triggerBody()?['appealId']",
+          "correlationId": "@variables('correlationId')"
+        },
+        "runAfter": {
+          "Build_Details_Response": ["Succeeded"]
+        },
+        "description": "TODO: Send to Application Insights"
+      },
+      "Response_Success": {
+        "type": "Response",
+        "kind": "Http",
+        "inputs": {
+          "statusCode": 200,
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Correlation-Id": "@variables('correlationId')"
+          },
+          "body": "@outputs('Build_Details_Response')"
+        },
+        "runAfter": {
+          "Log_Success": ["Succeeded"]
+        }
+      },
+      "Catch_Errors": {
+        "type": "Scope",
+        "actions": {
+          "Build_Error_Response": {
+            "type": "Compose",
+            "inputs": {
+              "appealId": "@triggerBody()?['appealId']",
+              "error": "Failed to retrieve appeal details",
+              "metadata": {
+                "correlationId": "@variables('correlationId')",
+                "workflowRunId": "@workflow().run.name"
+              }
+            },
+            "runAfter": {},
+            "description": "TODO: Build detailed error response, return 404 if appeal not found, 500 for other errors"
+          },
+          "Log_Error": {
+            "type": "Compose",
+            "inputs": {
+              "level": "ERROR",
+              "message": "Failed to retrieve appeal details",
+              "appealId": "@triggerBody()?['appealId']",
+              "correlationId": "@variables('correlationId')"
+            },
+            "runAfter": {
+              "Build_Error_Response": ["Succeeded"]
+            },
+            "description": "TODO: Send error to Application Insights"
+          },
+          "Response_Error": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 500,
+              "headers": {
+                "Content-Type": "application/json",
+                "X-Correlation-Id": "@variables('correlationId')"
+              },
+              "body": "@outputs('Build_Error_Response')"
+            },
+            "runAfter": {
+              "Log_Error": ["Succeeded"]
+            }
+          }
+        },
+        "runAfter": {
+          "Build_Details_Response": ["Failed", "Skipped", "TimedOut"]
+        },
+        "description": "TODO: Enhanced error handling with specific status codes (404 for not found, 500 for server error)"
+      }
+    },
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "type": "object",
+        "defaultValue": {}
+      },
+      "qnxt_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "availity_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "dms_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      }
+    }
+  },
+  "kind": "Stateful",
+  "parameters": {
+    "$connections": {
+      "value": {}
+    },
+    "qnxt_endpoint": {
+      "value": "https://qnxt.example.com/api/appeals"
+    },
+    "availity_endpoint": {
+      "value": "https://api.availity.com/bedlam/v1/appeals"
+    },
+    "dms_endpoint": {
+      "value": "https://dms.example.com/api/documents"
+    }
+  }
+}

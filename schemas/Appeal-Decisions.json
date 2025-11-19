@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aurelianware.com/schemas/Appeal-Decisions.json",
+  "title": "Appeal Decisions",
+  "description": "Enumeration and descriptions of valid appeal decision outcomes",
+  "type": "object",
+  "properties": {
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "description"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "APPROVED_FULL",
+              "APPROVED_PARTIAL",
+              "DENIED",
+              "WITHDRAWN",
+              "PENDING"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "requiresFollowUp": {
+            "type": "boolean"
+          },
+          "paymentAdjustmentExpected": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "decisionDetails": {
+      "APPROVED_FULL": {
+        "description": "Appeal approved in full; original claim will be paid at requested amount",
+        "requiresFollowUp": false,
+        "paymentAdjustmentExpected": true,
+        "nextActions": [
+          "Wait for adjusted payment",
+          "Monitor remittance advice for payment details",
+          "Close appeal case after payment received"
+        ]
+      },
+      "APPROVED_PARTIAL": {
+        "description": "Appeal partially approved; claim will be paid at an adjusted amount",
+        "requiresFollowUp": true,
+        "paymentAdjustmentExpected": true,
+        "nextActions": [
+          "Review adjusted payment amount and rationale",
+          "Determine if additional appeal or escalation is warranted",
+          "Monitor remittance advice",
+          "Consider secondary appeal if justified"
+        ]
+      },
+      "DENIED": {
+        "description": "Appeal denied; original claim decision stands",
+        "requiresFollowUp": true,
+        "paymentAdjustmentExpected": false,
+        "nextActions": [
+          "Review denial rationale carefully",
+          "Determine if secondary appeal or external review is appropriate",
+          "Consider regulatory complaint if applicable",
+          "Document decision for internal records"
+        ]
+      },
+      "WITHDRAWN": {
+        "description": "Appeal withdrawn by requesting party",
+        "requiresFollowUp": false,
+        "paymentAdjustmentExpected": false,
+        "nextActions": [
+          "Confirm withdrawal was intentional",
+          "Close appeal case",
+          "Document withdrawal reason"
+        ]
+      },
+      "PENDING": {
+        "description": "Appeal decision is still pending; under review",
+        "requiresFollowUp": true,
+        "paymentAdjustmentExpected": false,
+        "nextActions": [
+          "Monitor appeal status regularly",
+          "Follow up if decision exceeds expected timeframe",
+          "Ensure all requested documentation has been provided"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,464 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/schemas/2023-01-31-preview/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "ServiceBus_Attachments_In": {
+        "type": "ApiConnection",
+        "inputs": {
+          "host": {
+            "connection": {
+              "name": "@parameters('$connections')['servicebus']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/@{encodeURIComponent(parameters('sb_namespace'))}/topics/@{encodeURIComponent(parameters('sb_topic_attachments'))}/subscriptions/@{encodeURIComponent(parameters('sb_subscription_processor'))}/messages/head"
+        },
+        "recurrence": {
+          "frequency": "Minute",
+          "interval": 1
+        },
+        "splitOn": "@triggerBody()",
+        "description": "Polls Service Bus 'attachments-in' topic for new attachment processing events"
+      }
+    },
+    "actions": {
+      "Initialize_Variables": {
+        "type": "Scope",
+        "actions": {
+          "Set_CorrelationId": {
+            "type": "InitializeVariable",
+            "inputs": {
+              "variables": [
+                {
+                  "name": "correlationId",
+                  "type": "string",
+                  "value": "@{guid()}"
+                }
+              ]
+            },
+            "runAfter": {}
+          },
+          "Set_IsAppeal": {
+            "type": "InitializeVariable",
+            "inputs": {
+              "variables": [
+                {
+                  "name": "isAppeal",
+                  "type": "boolean",
+                  "value": false
+                }
+              ]
+            },
+            "runAfter": {
+              "Set_CorrelationId": ["Succeeded"]
+            },
+            "description": "Flag to track if this attachment is part of an appeal"
+          }
+        },
+        "runAfter": {}
+      },
+      "Parse_Attachment_Event": {
+        "type": "ParseJson",
+        "inputs": {
+          "content": "@json(base64ToString(triggerBody()?['ContentData']))",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "claimNumber": { "type": "string" },
+              "memberId": { "type": "string" },
+              "providerNpi": { "type": "string" },
+              "attachmentType": { "type": "string" },
+              "dataLakePath": { "type": "string" },
+              "fileName": { "type": "string" }
+            },
+            "required": ["claimNumber", "memberId"]
+          }
+        },
+        "runAfter": {
+          "Initialize_Variables": ["Succeeded"]
+        },
+        "description": "Parse the attachment event from Service Bus message"
+      },
+      "Log_Attachment_Received": {
+        "type": "Compose",
+        "inputs": {
+          "message": "Attachment event received for processing",
+          "correlationId": "@variables('correlationId')",
+          "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+          "attachmentType": "@body('Parse_Attachment_Event')?['attachmentType']"
+        },
+        "runAfter": {
+          "Parse_Attachment_Event": ["Succeeded"]
+        },
+        "description": "TODO: Send to Application Insights for tracking"
+      },
+      "Detect_Appeal_Indicators": {
+        "type": "Scope",
+        "actions": {
+          "Check_Service_Bus_Properties": {
+            "type": "Compose",
+            "inputs": {
+              "appealIndicator": "@coalesce(triggerBody()?['UserProperties']?['appealIndicator'], '')",
+              "appealReasonCode": "@coalesce(triggerBody()?['UserProperties']?['appealReasonCode'], '')",
+              "appealFlag": "@coalesce(triggerBody()?['UserProperties']?['appealFlag'], false)"
+            },
+            "runAfter": {},
+            "description": "TODO: Check Service Bus message properties for appeal indicators set by upstream workflows"
+          },
+          "Check_Attachment_Metadata": {
+            "type": "Compose",
+            "inputs": {
+              "attachmentType": "@body('Parse_Attachment_Event')?['attachmentType']",
+              "documentCategory": "@coalesce(body('Parse_Attachment_Event')?['documentCategory'], '')"
+            },
+            "runAfter": {
+              "Check_Service_Bus_Properties": ["Succeeded"]
+            },
+            "description": "TODO: Check attachment metadata for appeal-related document types (e.g., 'APPEAL_LETTER', 'APPEAL_SUPPORTING_DOC')"
+          },
+          "Evaluate_Appeal_Status": {
+            "type": "If",
+            "expression": {
+              "or": [
+                {
+                  "equals": [
+                    "@outputs('Check_Service_Bus_Properties')?['appealFlag']",
+                    true
+                  ]
+                },
+                {
+                  "contains": [
+                    "@toLower(outputs('Check_Attachment_Metadata')?['attachmentType'])",
+                    "appeal"
+                  ]
+                }
+              ]
+            },
+            "actions": {
+              "Set_IsAppeal_True": {
+                "type": "SetVariable",
+                "inputs": {
+                  "name": "isAppeal",
+                  "value": true
+                },
+                "runAfter": {},
+                "description": "Mark this attachment as appeal-related"
+              },
+              "Log_Appeal_Detected": {
+                "type": "Compose",
+                "inputs": {
+                  "level": "INFO",
+                  "message": "Appeal-related attachment detected",
+                  "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+                  "correlationId": "@variables('correlationId')"
+                },
+                "runAfter": {
+                  "Set_IsAppeal_True": ["Succeeded"]
+                },
+                "description": "TODO: Send to Application Insights"
+              }
+            },
+            "else": {
+              "actions": {
+                "Log_Standard_Attachment": {
+                  "type": "Compose",
+                  "inputs": {
+                    "level": "INFO",
+                    "message": "Standard attachment - not appeal-related",
+                    "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']"
+                  },
+                  "runAfter": {},
+                  "description": "Standard attachment processing"
+                }
+              }
+            },
+            "runAfter": {
+              "Check_Attachment_Metadata": ["Succeeded"]
+            },
+            "description": "TODO: Evaluate if this is an appeal-related attachment based on multiple indicators"
+          }
+        },
+        "runAfter": {
+          "Log_Attachment_Received": ["Succeeded"]
+        },
+        "description": "TODO: Comprehensive appeal detection logic - check Service Bus properties, attachment metadata, and document classification"
+      },
+      "Process_Attachment": {
+        "type": "Scope",
+        "actions": {
+          "Validate_Data_Lake_Path": {
+            "type": "Compose",
+            "inputs": {
+              "dataLakePath": "@body('Parse_Attachment_Event')?['dataLakePath']",
+              "pathValid": "@startsWith(body('Parse_Attachment_Event')?['dataLakePath'], 'hipaa-attachments/')"
+            },
+            "runAfter": {},
+            "description": "TODO: Validate Data Lake path format and accessibility"
+          },
+          "Check_File_Accessibility": {
+            "type": "Compose",
+            "inputs": {
+              "storageEndpoint": "@parameters('storage_endpoint')",
+              "filePath": "@body('Parse_Attachment_Event')?['dataLakePath']"
+            },
+            "runAfter": {
+              "Validate_Data_Lake_Path": ["Succeeded"]
+            },
+            "description": "TODO: Query Azure Blob Storage to verify file exists and is accessible. Use Blob API connection."
+          },
+          "Extract_File_Metadata": {
+            "type": "Compose",
+            "inputs": {
+              "fileName": "@body('Parse_Attachment_Event')?['fileName']",
+              "fileSize": 0,
+              "mimeType": "",
+              "uploadDate": "@utcNow()"
+            },
+            "runAfter": {
+              "Check_File_Accessibility": ["Succeeded"]
+            },
+            "description": "TODO: Extract file metadata (size, MIME type, upload date) from blob properties"
+          }
+        },
+        "runAfter": {
+          "Detect_Appeal_Indicators": ["Succeeded"]
+        },
+        "description": "TODO: Standard attachment processing - validate file, extract metadata, verify integrity"
+      },
+      "Route_Based_On_Type": {
+        "type": "If",
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@variables('isAppeal')",
+                true
+              ]
+            }
+          ]
+        },
+        "actions": {
+          "Route_To_Appeals_Processing": {
+            "type": "Scope",
+            "actions": {
+              "Enrich_With_Appeal_Context": {
+                "type": "Compose",
+                "inputs": {
+                  "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+                  "memberId": "@body('Parse_Attachment_Event')?['memberId']",
+                  "providerNpi": "@body('Parse_Attachment_Event')?['providerNpi']",
+                  "attachmentType": "@body('Parse_Attachment_Event')?['attachmentType']",
+                  "dataLakePath": "@body('Parse_Attachment_Event')?['dataLakePath']",
+                  "fileName": "@body('Parse_Attachment_Event')?['fileName']",
+                  "appealIndicator": "@outputs('Check_Service_Bus_Properties')?['appealIndicator']",
+                  "appealReasonCode": "@outputs('Check_Service_Bus_Properties')?['appealReasonCode']",
+                  "isAppeal": true,
+                  "correlationId": "@variables('correlationId')"
+                },
+                "runAfter": {},
+                "description": "TODO: Enrich attachment event with appeal-specific context"
+              },
+              "Publish_To_Appeals_Topic": {
+                "type": "Compose",
+                "inputs": {
+                  "serviceBusEndpoint": "@parameters('sb_namespace')",
+                  "topic": "appeals-attachments",
+                  "message": "@outputs('Enrich_With_Appeal_Context')"
+                },
+                "runAfter": {
+                  "Enrich_With_Appeal_Context": ["Succeeded"]
+                },
+                "description": "TODO: Publish enriched event to 'appeals-attachments' Service Bus topic for specialized appeal processing. Use Service Bus API connection."
+              },
+              "Log_Routed_To_Appeals": {
+                "type": "Compose",
+                "inputs": {
+                  "level": "INFO",
+                  "message": "Attachment routed to appeals processing",
+                  "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+                  "correlationId": "@variables('correlationId')"
+                },
+                "runAfter": {
+                  "Publish_To_Appeals_Topic": ["Succeeded"]
+                },
+                "description": "TODO: Send to Application Insights"
+              }
+            },
+            "runAfter": {},
+            "description": "TODO: Route appeal-related attachments to specialized appeals processing queue"
+          }
+        },
+        "else": {
+          "actions": {
+            "Standard_Attachment_Processing": {
+              "type": "Scope",
+              "actions": {
+                "Link_To_Claim": {
+                  "type": "Compose",
+                  "inputs": {
+                    "qnxtEndpoint": "@parameters('qnxt_endpoint')",
+                    "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+                    "attachmentPath": "@body('Parse_Attachment_Event')?['dataLakePath']"
+                  },
+                  "runAfter": {},
+                  "description": "TODO: Link attachment to claim in QNXT system. Make HTTP POST to QNXT attachments API."
+                },
+                "Update_Claim_Status": {
+                  "type": "Compose",
+                  "inputs": {
+                    "claimStatus": "ATTACHMENT_RECEIVED"
+                  },
+                  "runAfter": {
+                    "Link_To_Claim": ["Succeeded"]
+                  },
+                  "description": "TODO: Update claim status in QNXT to reflect attachment receipt"
+                },
+                "Log_Standard_Processing": {
+                  "type": "Compose",
+                  "inputs": {
+                    "level": "INFO",
+                    "message": "Standard attachment processing completed",
+                    "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+                    "correlationId": "@variables('correlationId')"
+                  },
+                  "runAfter": {
+                    "Update_Claim_Status": ["Succeeded"]
+                  },
+                  "description": "TODO: Send to Application Insights"
+                }
+              },
+              "runAfter": {},
+              "description": "TODO: Standard (non-appeal) attachment processing - link to claim, update status"
+            }
+          }
+        },
+        "runAfter": {
+          "Process_Attachment": ["Succeeded"]
+        },
+        "description": "TODO: Branch routing logic - send appeal attachments to specialized processing, standard attachments to normal flow"
+      },
+      "Complete_Processing": {
+        "type": "Compose",
+        "inputs": {
+          "status": "COMPLETED",
+          "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+          "isAppeal": "@variables('isAppeal')",
+          "processedAt": "@utcNow()",
+          "correlationId": "@variables('correlationId')"
+        },
+        "runAfter": {
+          "Route_Based_On_Type": ["Succeeded"]
+        },
+        "description": "TODO: Mark processing as complete, log final status"
+      },
+      "Log_Success": {
+        "type": "Compose",
+        "inputs": {
+          "level": "INFO",
+          "message": "Attachment processed successfully",
+          "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+          "isAppeal": "@variables('isAppeal')",
+          "correlationId": "@variables('correlationId')"
+        },
+        "runAfter": {
+          "Complete_Processing": ["Succeeded"]
+        },
+        "description": "TODO: Send success log to Application Insights"
+      },
+      "Catch_Errors": {
+        "type": "Scope",
+        "actions": {
+          "Build_Error_Details": {
+            "type": "Compose",
+            "inputs": {
+              "status": "FAILED",
+              "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+              "error": "Attachment processing failed",
+              "correlationId": "@variables('correlationId')"
+            },
+            "runAfter": {},
+            "description": "TODO: Build detailed error information"
+          },
+          "Log_Error": {
+            "type": "Compose",
+            "inputs": {
+              "level": "ERROR",
+              "message": "Attachment processing failed",
+              "claimNumber": "@body('Parse_Attachment_Event')?['claimNumber']",
+              "correlationId": "@variables('correlationId')",
+              "error": "@outputs('Build_Error_Details')"
+            },
+            "runAfter": {
+              "Build_Error_Details": ["Succeeded"]
+            },
+            "description": "TODO: Send error log to Application Insights with full context"
+          },
+          "Send_To_Dead_Letter": {
+            "type": "Compose",
+            "inputs": {
+              "deadLetterTopic": "attachments-dead-letter",
+              "message": "@outputs('Build_Error_Details')"
+            },
+            "runAfter": {
+              "Log_Error": ["Succeeded"]
+            },
+            "description": "TODO: Send failed message to dead-letter queue for manual review. Use Service Bus API connection."
+          }
+        },
+        "runAfter": {
+          "Complete_Processing": ["Failed", "Skipped", "TimedOut"]
+        },
+        "description": "TODO: Enhanced error handling - log errors, send to dead-letter queue, alert on critical failures"
+      }
+    },
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "type": "object",
+        "defaultValue": {}
+      },
+      "sb_namespace": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "sb_topic_attachments": {
+        "type": "string",
+        "defaultValue": "attachments-in"
+      },
+      "sb_subscription_processor": {
+        "type": "string",
+        "defaultValue": "attachment-processor"
+      },
+      "qnxt_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "storage_endpoint": {
+        "type": "string",
+        "defaultValue": ""
+      }
+    }
+  },
+  "kind": "Stateful",
+  "parameters": {
+    "$connections": {
+      "value": {}
+    },
+    "sb_namespace": {
+      "value": "hipaa-logic-svc"
+    },
+    "sb_topic_attachments": {
+      "value": "attachments-in"
+    },
+    "sb_subscription_processor": {
+      "value": "attachment-processor"
+    },
+    "qnxt_endpoint": {
+      "value": "https://qnxt.example.com/api/claims"
+    },
+    "storage_endpoint": {
+      "value": "https://storage.blob.core.windows.net"
+    }
+  }
+}

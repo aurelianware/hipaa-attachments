@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aurelianware.com/schemas/Appeal-ToPayer-Request.json",
+  "title": "Appeal To Payer Request",
+  "description": "Request schema for submitting a claim appeal to a payer via Availity portal",
+  "type": "object",
+  "required": [
+    "claimNumber",
+    "memberId",
+    "appealReason",
+    "appealDate",
+    "requestedBy"
+  ],
+  "properties": {
+    "claimNumber": {
+      "type": "string",
+      "description": "Unique claim identifier from QNXT",
+      "pattern": "^[A-Z0-9]{8,20}$",
+      "minLength": 8,
+      "maxLength": 20
+    },
+    "memberId": {
+      "type": "string",
+      "description": "Member identifier",
+      "pattern": "^[A-Z0-9]{6,15}$",
+      "minLength": 6,
+      "maxLength": 15
+    },
+    "providerNpi": {
+      "type": "string",
+      "description": "National Provider Identifier (NPI)",
+      "pattern": "^[0-9]{10}$",
+      "minLength": 10,
+      "maxLength": 10
+    },
+    "appealReason": {
+      "type": "string",
+      "description": "Primary reason code for the appeal (see Appeal-RequestReasons.json)",
+      "enum": [
+        "DENIED_CLAIM",
+        "PARTIAL_PAYMENT",
+        "CODING_DISPUTE",
+        "MEDICAL_NECESSITY",
+        "TIMELY_FILING",
+        "AUTHORIZATION_ISSUE",
+        "OUT_OF_NETWORK",
+        "COORDINATION_OF_BENEFITS",
+        "DUPLICATE_CLAIM",
+        "OTHER"
+      ]
+    },
+    "appealReasonDescription": {
+      "type": "string",
+      "description": "Detailed explanation of appeal reason",
+      "maxLength": 2000
+    },
+    "appealDate": {
+      "type": "string",
+      "description": "Date appeal was initiated (ISO 8601 format)",
+      "format": "date-time"
+    },
+    "serviceFromDate": {
+      "type": "string",
+      "description": "Start date of service (ISO 8601 format)",
+      "format": "date"
+    },
+    "serviceToDate": {
+      "type": "string",
+      "description": "End date of service (ISO 8601 format)",
+      "format": "date"
+    },
+    "requestedBy": {
+      "type": "object",
+      "description": "Information about who initiated the appeal",
+      "required": ["name", "role"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": ["PROVIDER", "MEMBER", "AUTHORIZED_REPRESENTATIVE"]
+        },
+        "contactPhone": {
+          "type": "string",
+          "pattern": "^\\+?[0-9]{10,15}$"
+        },
+        "contactEmail": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 100
+        }
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "description": "Supporting documentation for the appeal",
+      "items": {
+        "type": "object",
+        "required": ["fileName", "dataLakePath", "fileSize"],
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "dataLakePath": {
+            "type": "string",
+            "description": "Path in Azure Data Lake Storage",
+            "pattern": "^hipaa-attachments/",
+            "maxLength": 500
+          },
+          "fileSize": {
+            "type": "integer",
+            "description": "File size in bytes",
+            "minimum": 1,
+            "maximum": 10485760
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": ["application/pdf", "image/jpeg", "image/png", "image/tiff", "text/plain"]
+          },
+          "uploadDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "maxItems": 10
+    },
+    "dmsVerificationStatus": {
+      "type": "string",
+      "description": "DMS (Document Management System) verification status",
+      "enum": ["PENDING", "VERIFIED", "FAILED", "NOT_REQUIRED"]
+    },
+    "priority": {
+      "type": "string",
+      "description": "Appeal priority level",
+      "enum": ["ROUTINE", "URGENT", "EXPEDITED"],
+      "default": "ROUTINE"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for tracking and auditing",
+      "properties": {
+        "correlationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "submissionSource": {
+          "type": "string",
+          "enum": ["PORTAL", "API", "BATCH", "MANUAL"]
+        },
+        "submissionTimestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aurelianware.com/schemas/Appeal-GetDetails-Response.json",
+  "title": "Appeal Get Details Response",
+  "description": "Response schema for appeal details and status",
+  "type": "object",
+  "required": [
+    "appealId",
+    "claimNumber",
+    "status",
+    "submittedAt"
+  ],
+  "properties": {
+    "appealId": {
+      "type": "string",
+      "description": "Unique identifier for the appeal"
+    },
+    "claimNumber": {
+      "type": "string",
+      "description": "Associated claim number"
+    },
+    "memberId": {
+      "type": "string",
+      "description": "Member identifier"
+    },
+    "providerNpi": {
+      "type": "string",
+      "description": "Provider NPI"
+    },
+    "status": {
+      "type": "string",
+      "description": "Current status of the appeal",
+      "enum": [
+        "SUBMITTED",
+        "ACCEPTED",
+        "REJECTED",
+        "PENDING_REVIEW",
+        "IN_PROGRESS",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "DENIED",
+        "PARTIALLY_APPROVED",
+        "WITHDRAWN",
+        "COMPLETED",
+        "FAILED"
+      ]
+    },
+    "appealReason": {
+      "type": "string",
+      "description": "Primary reason for appeal"
+    },
+    "appealReasonDescription": {
+      "type": "string",
+      "description": "Detailed description of appeal reason"
+    },
+    "submittedAt": {
+      "type": "string",
+      "description": "Submission timestamp (ISO 8601)",
+      "format": "date-time"
+    },
+    "lastUpdatedAt": {
+      "type": "string",
+      "description": "Last update timestamp (ISO 8601)",
+      "format": "date-time"
+    },
+    "decision": {
+      "type": "object",
+      "description": "Appeal decision details (if available)",
+      "properties": {
+        "decisionCode": {
+          "type": "string",
+          "description": "Decision code (see Appeal-Decisions.json)",
+          "enum": [
+            "APPROVED_FULL",
+            "APPROVED_PARTIAL",
+            "DENIED",
+            "WITHDRAWN",
+            "PENDING"
+          ]
+        },
+        "decisionDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "decisionReason": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "adjustedAmount": {
+          "type": "number",
+          "description": "Adjusted payment amount (if applicable)"
+        },
+        "decidedBy": {
+          "type": "string",
+          "description": "Payer or reviewer who made decision"
+        }
+      }
+    },
+    "availityReferenceNumber": {
+      "type": "string",
+      "description": "Availity system reference"
+    },
+    "payerReferenceNumber": {
+      "type": "string",
+      "description": "Payer system reference"
+    },
+    "attachments": {
+      "type": "array",
+      "description": "List of attachments (if requested)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "dataLakePath": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "uploadDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "history": {
+      "type": "array",
+      "description": "Appeal status history (if requested)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "correspondence": {
+      "type": "array",
+      "description": "Correspondence history (if requested)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["INBOUND", "OUTBOUND", "SYSTEM"]
+          },
+          "subject": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sender": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Response metadata",
+      "properties": {
+        "correlationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "retrievedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

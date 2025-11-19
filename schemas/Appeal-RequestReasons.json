@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aurelianware.com/schemas/Appeal-RequestReasons.json",
+  "title": "Appeal Request Reasons",
+  "description": "Enumeration and descriptions of valid appeal request reasons",
+  "type": "object",
+  "properties": {
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "description"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "DENIED_CLAIM",
+              "PARTIAL_PAYMENT",
+              "CODING_DISPUTE",
+              "MEDICAL_NECESSITY",
+              "TIMELY_FILING",
+              "AUTHORIZATION_ISSUE",
+              "OUT_OF_NETWORK",
+              "COORDINATION_OF_BENEFITS",
+              "DUPLICATE_CLAIM",
+              "OTHER"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "requiresAdditionalDocumentation": {
+            "type": "boolean"
+          },
+          "typicalTimeframeBusinessDays": {
+            "type": "integer",
+            "description": "Typical timeframe for resolution in business days"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "reasonDetails": {
+      "DENIED_CLAIM": {
+        "description": "Claim was denied and provider is appealing the denial decision",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 30
+      },
+      "PARTIAL_PAYMENT": {
+        "description": "Claim was partially paid and provider believes full payment is warranted",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 30
+      },
+      "CODING_DISPUTE": {
+        "description": "Disagreement with procedure or diagnosis codes used by payer",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 30
+      },
+      "MEDICAL_NECESSITY": {
+        "description": "Service was denied as not medically necessary; provider appeals with clinical justification",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 45
+      },
+      "TIMELY_FILING": {
+        "description": "Claim denied for late submission; provider provides justification for delay",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 30
+      },
+      "AUTHORIZATION_ISSUE": {
+        "description": "Claim denied due to missing or invalid authorization; provider provides documentation",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 30
+      },
+      "OUT_OF_NETWORK": {
+        "description": "Claim denied as out-of-network; provider appeals for in-network consideration",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 30
+      },
+      "COORDINATION_OF_BENEFITS": {
+        "description": "Dispute regarding coordination of benefits with other insurance",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 45
+      },
+      "DUPLICATE_CLAIM": {
+        "description": "Claim denied as duplicate; provider provides evidence it is unique",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 20
+      },
+      "OTHER": {
+        "description": "Other appeal reason not covered by standard categories",
+        "requiresAdditionalDocumentation": true,
+        "typicalTimeframeBusinessDays": 30
+      }
+    }
+  }
+}
