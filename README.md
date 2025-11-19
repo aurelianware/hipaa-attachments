@@ -86,7 +86,7 @@ This solution implements the following process:
 9. **278 Transaction Processing**: Processes Health Care Services Review Information via ingest278 workflow
 10. **Authorization Processing**: Processes 278 authorization requests/responses, generates 277 responses (process_authorizations workflow)
 11. **Deterministic Replay**: HTTP endpoint for replaying 278 transactions via replay278 workflow
-10. **Deterministic Replay**: HTTP endpoint for replaying 278 transactions via replay278 workflow
+12. **Claim Appeals Integration**: Submit and manage claim appeals through Availity Bedlam API (appeal_to_payer, appeal_update_to_payer, appeal_get_details, appeal_update_to_availity workflows) 🆕
 
 ## 📦 Current Production Deployment
 
@@ -95,7 +95,7 @@ This solution implements the following process:
 - **Logic App Standard**: `hipaa-logic-la` ✅ RUNNING
 - **Storage Account**: `hipaa7v2rrsoo6tac2` (Data Lake Gen2 enabled) ✅
 - **Service Bus Namespace**: `hipaa-logic-svc` (Standard tier) ✅
-  - Topics: `attachments-in`, `rfai-requests`, `edi-278`, `appeals-auth`, `auth-statuses`, `dead-letter` ✅
+  - Topics: `attachments-in`, `rfai-requests`, `edi-278`, `appeals-auth`, `auth-statuses`, `dead-letter`, `appeals-attachments` 🆕, `appeals-updates` 🆕 ✅
 - **Application Insights**: `hipaa-logic-ai` ✅
 
 ### 🌐 Resource URLs
@@ -112,14 +112,20 @@ This solution implements the following process:
 - `logicapps/workflows/ingest278/workflow.json`: X12 278 transaction processing workflow
 - `logicapps/workflows/process_authorizations/workflow.json`: Authorization request/response processing workflow
 - `logicapps/workflows/replay278/workflow.json`: HTTP endpoint for deterministic 278 replay
+- `logicapps/workflows/appeal_to_payer/workflow.json`: Submit claim appeals to payer via Availity 🆕
+- `logicapps/workflows/appeal_update_to_payer/workflow.json`: Update existing appeals 🆕
+- `logicapps/workflows/appeal_get_details/workflow.json`: Retrieve appeal details and status 🆕
+- `logicapps/workflows/appeal_update_to_availity/workflow.json`: Webhook for Availity status updates 🆕
+- `logicapps/workflows/attachment_processor/workflow.json`: Process attachments with appeal detection 🆕
 
 ### Key Features
-- **Data Lake Storage**: Files stored with `hipaa-attachments/raw/{275|278|authorizations}/yyyy/MM/dd/` partitioning
+- **Data Lake Storage**: Files stored with `hipaa-attachments/raw/{275|278|authorizations|appeals-documents}/yyyy/MM/dd/` partitioning
 - **Retry Logic**: 4 retries with 15-second intervals for QNXT API calls
 - **Error Handling**: Service Bus dead-letter support
 - **Monitoring**: Application Insights integration
 - **278 Replay Endpoint**: HTTP trigger for deterministic transaction replay
 - **Authorization Processing**: Complete authorization lifecycle from request through 277 response generation
+- **Claim Appeals Integration**: Full lifecycle management for claim appeals through Availity Bedlam API (see [docs/APPEALS-INTEGRATION.md](docs/APPEALS-INTEGRATION.md)) 🆕
 
 ## Build & Deployment
 

@@ -7,8 +7,9 @@ This repository implements an Azure Logic Apps solution for processing HIPAA-com
 - **HIPAA 277 RFAI**: Consumes RFAI requests from Service Bus, generates X12 277, sends via SFTP
 - **HIPAA 278 Processing**: Processes Health Care Services Review Information transactions
 - **278 Replay Endpoint**: HTTP endpoint for deterministic replay of 278 transactions for debugging
+- **Claim Appeals Integration**: Submit and manage claim appeals through Availity Bedlam API (appeal_to_payer, appeal_update_to_payer, appeal_get_details, appeal_update_to_availity)
 
-**Infrastructure**: Azure Data Lake Storage Gen2 (hierarchical namespace), Service Bus (topics: attachments-in, rfai-requests, edi-278), Logic App Standard (WS1 SKU), Application Insights
+**Infrastructure**: Azure Data Lake Storage Gen2 (hierarchical namespace), Service Bus (topics: attachments-in, rfai-requests, edi-278, appeals-attachments, appeals-updates), Logic App Standard (WS1 SKU), Application Insights
 
 Always reference these instructions first and only fallback to search or bash commands when you encounter unexpected information that does not match the info here.
 
@@ -21,6 +22,8 @@ Always reference these instructions first and only fallback to search or bash co
 - **[DEPLOYMENT.md](../DEPLOYMENT.md)** - Step-by-step deployment procedures for DEV/UAT/PROD environments
 - **[TROUBLESHOOTING.md](../TROUBLESHOOTING.md)** - Common issues and solutions for development, deployment, and runtime problems
 - **[SECURITY.md](../SECURITY.md)** - HIPAA compliance requirements, encryption, access control, and secure development practices
+- **[docs/APPEALS-INTEGRATION.md](../docs/APPEALS-INTEGRATION.md)** - Claim Appeals integration implementation guide (600+ lines)
+- **[docs/APPEALS-BACKEND-INTERFACE.md](../docs/APPEALS-BACKEND-INTERFACE.md)** - Appeals backend interface specifications and TypeScript-like contracts
 
 **Quick References:**
 - New developer onboarding: Start with [CONTRIBUTING.md](../CONTRIBUTING.md)
@@ -28,6 +31,7 @@ Always reference these instructions first and only fallback to search or bash co
 - Deploying changes: Follow [DEPLOYMENT.md](../DEPLOYMENT.md)
 - Fixing issues: Check [TROUBLESHOOTING.md](../TROUBLESHOOTING.md)
 - Security questions: Review [SECURITY.md](../SECURITY.md)
+- Appeals integration: See [docs/APPEALS-INTEGRATION.md](../docs/APPEALS-INTEGRATION.md)
 
 ## Working Effectively
 
@@ -474,3 +478,200 @@ dependencies
 ```bash
 az servicebus topic show --resource-group "rg" --namespace-name "ns" --name "topic" --query "messageCount"
 ```
+
+## Appeals Integration Instructions
+
+### Overview
+The Claim Appeals integration enables healthcare providers to submit and manage claim appeals through Availity Bedlam API. The implementation consists of:
+- **4 Appeal Workflows**: appeal_to_payer, appeal_update_to_payer, appeal_get_details, appeal_update_to_availity
+- **1 Enhanced Workflow**: attachment_processor (with appeal detection)
+- **7 JSON Schemas**: Appeal-ToPayer-Request, Appeal-ToPayer-Response, Appeal-GetDetails-Request, Appeal-GetDetails-Response, Appeal-UpdateToPayer-Request, Appeal-RequestReasons, Appeal-Decisions
+- **1 Bicep Module**: infra/modules/appeals-api.bicep
+- **OpenAPI Spec**: docs/api/APPEALS-OPENAPI.yaml
+
+### Key Files and Purposes
+
+**Workflow Files** (`logicapps/workflows/`):
+- `appeal_to_payer/workflow.json`: Submit new appeals to payer via Availity
+- `appeal_update_to_payer/workflow.json`: Update existing appeals with additional info
+- `appeal_get_details/workflow.json`: Retrieve appeal details and status
+- `appeal_update_to_availity/workflow.json`: Webhook for receiving Availity status updates
+- `attachment_processor/workflow.json`: Detect appeal-related attachments and route appropriately
+
+**Schema Files** (`schemas/`):
+- All schemas include comprehensive validation rules (patterns, lengths, enums)
+- Maximum attachment size: 10MB per file
+- Maximum attachments per appeal: 10
+- Appeal time window: 365 days from claim denial
+
+**Infrastructure** (`infra/`):
+- `modules/appeals-api.bicep`: Creates Service Bus topics (appeals-attachments, appeals-updates), storage container (appeals-documents)
+- `main.bicep`: Conditionally includes appeals module when `appealsEnabled=true`
+- `main.parameters.json`: Configuration for appeals endpoints (QNXT, Availity, DMS)
+
+### Code Generation Patterns
+
+When generating or modifying appeals-related code:
+
+1. **Workflow Structure**:
+   - All workflows are `"kind": "Stateful"` (required for Logic Apps Standard)
+   - Include comprehensive TODO comments for implementation
+   - Add detailed description fields for all actions
+   - Include error handling scopes with specific error codes
+   - Add Application Insights logging actions
+
+2. **Schema Validation**:
+   - Use `"operationOptions": "EnableSchemaValidation"` for HTTP triggers
+   - Reference schemas using `"$ref": "file://schemas/Appeal-*.json"`
+   - All required fields must be documented with validation rules
+   - Include examples in schema descriptions
+
+3. **External API Calls**:
+   - Use placeholders for QNXT/Availity/DMS endpoints
+   - Include retry policies (default: 4 attempts, 15-second intervals)
+   - Add timeout specifications (default: 60 seconds)
+   - Document authentication mechanisms (OAuth 2.0, API keys)
+
+4. **Service Bus Integration**:
+   - Use topics for pub/sub patterns (not queues)
+   - Enable message ordering for appeals-updates topic
+   - Set message TTL to 14 days
+   - Enable duplicate detection (10-minute window)
+
+5. **Error Handling**:
+   - Use specific error codes (QNXT_UNAVAILABLE, AVAILITY_UNAVAILABLE, DMS_UNAVAILABLE)
+   - Return appropriate HTTP status codes (400, 404, 500)
+   - Include detailed error messages in responses
+   - Log all errors to Application Insights
+
+### Testing Appeals Code
+
+**Validate Workflows**:
+```bash
+# Validate all workflow JSON files
+find logicapps/workflows -name "workflow.json" -exec jq -e 'has("definition") and has("kind") and has("parameters")' {} \;
+
+# Validate appeal workflows specifically
+for workflow in appeal_to_payer appeal_update_to_payer appeal_get_details appeal_update_to_availity attachment_processor; do
+  echo "Validating $workflow"
+  jq -e '.kind == "Stateful"' logicapps/workflows/$workflow/workflow.json
+done
+```
+
+**Validate Schemas**:
+```bash
+# Validate all appeal schemas
+find schemas -name "Appeal-*.json" -exec jq . {} \; >/dev/null && echo "All schemas valid"
+```
+
+**Validate Infrastructure**:
+```bash
+# Compile appeals Bicep module
+az bicep build --file infra/modules/appeals-api.bicep --outfile /tmp/appeals-api.json
+
+# Compile main.bicep with appeals enabled
+az bicep build --file infra/main.bicep --outfile /tmp/main-with-appeals.json
+```
+
+**Validate OpenAPI**:
+```bash
+# Validate YAML syntax (if yamllint available)
+yamllint docs/api/APPEALS-OPENAPI.yaml
+
+# Parse with Python (if available)
+python3 -c "import yaml; yaml.safe_load(open('docs/api/APPEALS-OPENAPI.yaml'))" && echo "YAML valid"
+```
+
+### Common Appeals Development Tasks
+
+**"Add new appeal workflow"**:
+1. Create directory: `logicapps/workflows/<workflow-name>/`
+2. Create `workflow.json` with required structure
+3. Set `"kind": "Stateful"`
+4. Include TODO comments for implementation
+5. Validate JSON structure
+6. Update APPEALS-INTEGRATION.md documentation
+
+**"Add new appeal schema"**:
+1. Create `schemas/Appeal-<Name>.json`
+2. Include `$schema` and `$id` fields
+3. Define validation rules (patterns, lengths, enums)
+4. Add examples in description
+5. Validate with `jq`
+
+**"Enable appeals in environment"**:
+1. Update `infra/main.parameters.json`: set `appealsEnabled: true`
+2. Configure endpoints: qnxtAppealsEndpoint, availityBedlamEndpoint, dmsEndpoint
+3. Deploy infrastructure: `az deployment group create ...`
+4. Store secrets in Key Vault (Availity OAuth, QNXT API key)
+5. Deploy workflows: `az webapp deploy ...`
+6. Configure Availity webhook URL
+7. Test with sample requests
+
+**"Debug appeal workflow failure"**:
+1. Check Logic App run history in Azure Portal
+2. Review action inputs/outputs for failed steps
+3. Query Application Insights for errors:
+   ```kusto
+   traces
+   | where message contains "Appeal"
+   | where severityLevel >= 3
+   | order by timestamp desc
+   ```
+4. Verify external API connectivity (QNXT, Availity, DMS)
+5. Check Service Bus message properties
+6. Review correlation ID across all logs
+
+### Integration Points
+
+**QNXT Integration**:
+- Endpoint: Configured via `qnxtAppealsEndpoint` parameter
+- Authentication: API key stored in Key Vault
+- Operations: Validate claim, register appeal, update status, adjust payment
+- TODO: Obtain complete API specification from Cognizant/CTS
+
+**Availity Bedlam API**:
+- Endpoint: Configured via `availityBedlamEndpoint` parameter
+- Authentication: OAuth 2.0 Bearer Token (client credentials flow)
+- Operations: Submit appeal, update appeal, get status, receive webhooks
+- Webhook Signature: HMAC-SHA256 validation required
+- TODO: Obtain complete API specification and OAuth credentials
+
+**DMS (Document Management System)**:
+- Endpoint: Configured via `dmsEndpoint` parameter
+- Purpose: Verify appeal attachments exist in Data Lake
+- Operations: Verify documents, get metadata, check access
+- TODO: Define DMS API endpoints and authentication
+
+### Documentation References
+
+For complete implementation details, always refer to:
+- **[docs/APPEALS-INTEGRATION.md](../docs/APPEALS-INTEGRATION.md)**: 600+ line implementation guide with architecture, workflows, data models, deployment steps
+- **[docs/APPEALS-BACKEND-INTERFACE.md](../docs/APPEALS-BACKEND-INTERFACE.md)**: TypeScript-like interface definitions for all data structures and API contracts
+- **[docs/api/APPEALS-OPENAPI.yaml](../docs/api/APPEALS-OPENAPI.yaml)**: REST API specification with request/response examples
+- **JSON Schemas**: `schemas/Appeal-*.json` - Complete validation schemas with patterns and constraints
+
+### Development Guidelines
+
+1. **Always validate before committing**: Run JSON, Bicep, and YAML validation
+2. **Include comprehensive TODOs**: Document all implementation requirements
+3. **Follow existing patterns**: Match style of other workflows (ingest275, rfai277)
+4. **Add detailed descriptions**: Every action should have a description field
+5. **Document external dependencies**: Note Cognizant/CTS integration requirements
+6. **Test incrementally**: Validate each component before integration testing
+7. **Update documentation**: Keep APPEALS-INTEGRATION.md synchronized with code changes
+
+### Current Status
+
+**Status**: Initial scaffolding complete (Phase 1)
+- ✅ Workflow skeletons created with TODOs
+- ✅ JSON schemas defined and validated
+- ✅ Infrastructure module created and tested
+- ✅ OpenAPI specification created
+- ✅ Comprehensive documentation written
+- ⏳ External system integration (Phase 2 - pending API specs from Cognizant/CTS)
+- ⏳ Workflow implementation (Phase 3)
+- ⏳ Testing and validation (Phase 4)
+- ⏳ UAT and production deployment (Phase 5)
+
+**Next Steps**: Obtain QNXT and Availity API specifications from Cognizant/CTS to begin Phase 2 implementation.

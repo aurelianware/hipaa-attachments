@@ -397,6 +397,13 @@ az deployment group create \
 | `iaSku` | No | Integration Account SKU | `Free` (default) |
 | `useExistingIa` | No | Use existing Integration Account | `false` (default) |
 | `enableB2B` | No | Enable X12 connector | `true` (default) |
+| `appealsEnabled` | No | Enable Claim Appeals integration | `false` (default) 🆕 |
+| `qnxtAppealsEndpoint` | No | QNXT appeals API endpoint | `https://qnxt.example.com/api/appeals` 🆕 |
+| `availityBedlamEndpoint` | No | Availity Bedlam API endpoint | `https://api.availity.com/bedlam/v1` 🆕 |
+| `dmsEndpoint` | No | DMS (Document Management) endpoint | `https://dms.example.com/api` 🆕 |
+| `maxAttachmentSizeBytes` | No | Max attachment file size | `10485760` (10MB) 🆕 |
+| `maxAttachmentsPerAppeal` | No | Max attachments per appeal | `10` 🆕 |
+| `appealTimeWindowDays` | No | Appeal submission window | `365` days 🆕 |
 
 **🔒 Security Note**: Always pass sensitive parameters as secrets, never hardcode in templates or commit to version control.
 
@@ -492,6 +499,202 @@ hipaa-attachments-prod-la     Microsoft.Web/sites                    Succeeded  
 hipaa-attachments-prod-ai     Microsoft.Insights/components          Succeeded  eastus
 prod-integration-account      Microsoft.Logic/integrationAccounts    Succeeded  eastus
 ```
+
+### Appeals Integration Deployment 🆕
+
+The Claim Appeals integration is conditionally deployed when `appealsEnabled` parameter is set to `true`. This section provides deployment steps specific to the appeals functionality.
+
+#### Prerequisites
+
+1. **External System Credentials**:
+   - QNXT appeals API credentials
+   - Availity Bedlam API OAuth credentials
+   - DMS (Document Management System) API credentials
+
+2. **Service Bus Topics**:
+   - `appeals-attachments`: Automatically created by appeals module
+   - `appeals-updates`: Automatically created by appeals module
+
+3. **Storage Container**:
+   - `appeals-documents`: Automatically created by appeals module
+
+#### Enable Appeals in Deployment
+
+**Option 1: Update parameter file**
+
+Edit `infra/main.parameters.json`:
+
+```json
+{
+  "appealsEnabled": {
+    "value": true
+  },
+  "qnxtAppealsEndpoint": {
+    "value": "https://qnxt-dev.example.com/api/appeals"
+  },
+  "availityBedlamEndpoint": {
+    "value": "https://api-sandbox.availity.com/bedlam/v1/appeals"
+  },
+  "dmsEndpoint": {
+    "value": "https://dms-dev.example.com/api/documents"
+  }
+}
+```
+
+Then deploy:
+
+```bash
+az deployment group create \
+  --resource-group <rg-name> \
+  --template-file infra/main.bicep \
+  --parameters infra/main.parameters.json
+```
+
+**Option 2: Inline parameters**
+
+```bash
+az deployment group create \
+  --resource-group <rg-name> \
+  --template-file infra/main.bicep \
+  --parameters baseName=<name> \
+               appealsEnabled=true \
+               qnxtAppealsEndpoint="https://qnxt.example.com/api/appeals" \
+               availityBedlamEndpoint="https://api.availity.com/bedlam/v1" \
+               dmsEndpoint="https://dms.example.com/api"
+```
+
+#### Configure Appeals Secrets
+
+Store sensitive credentials in Azure Key Vault:
+
+```bash
+# Availity OAuth credentials
+az keyvault secret set \
+  --vault-name <key-vault-name> \
+  --name availity-client-id \
+  --value "<client-id>"
+
+az keyvault secret set \
+  --vault-name <key-vault-name> \
+  --name availity-client-secret \
+  --value "<client-secret>"
+
+# Availity webhook signature secret
+az keyvault secret set \
+  --vault-name <key-vault-name> \
+  --name availity-webhook-secret \
+  --value "<webhook-secret>"
+
+# QNXT API credentials
+az keyvault secret set \
+  --vault-name <key-vault-name> \
+  --name qnxt-api-key \
+  --value "<api-key>"
+```
+
+#### Deploy Appeals Workflows
+
+The appeals workflows are included in the standard workflow deployment:
+
+```bash
+# Create workflow package (includes all workflows)
+cd logicapps
+zip -r ../workflows.zip workflows/
+
+# Deploy to Logic App
+az webapp deploy \
+  --resource-group <rg-name> \
+  --name <logic-app-name> \
+  --src-path workflows.zip \
+  --type zip
+
+# Restart Logic App
+az webapp restart \
+  --resource-group <rg-name> \
+  --name <logic-app-name>
+```
+
+#### Verify Appeals Deployment
+
+```bash
+# Verify Service Bus topics created
+az servicebus topic list \
+  --resource-group <rg-name> \
+  --namespace-name <namespace-name> \
+  --query "[?contains(name,'appeals')].{Name:name, Status:status}" \
+  --output table
+
+# Expected output:
+# Name                  Status
+# --------------------  ------
+# appeals-attachments   Active
+# appeals-updates       Active
+
+# Verify storage container created
+az storage container show \
+  --name appeals-documents \
+  --account-name <storage-account> \
+  --query "{Name:name, PublicAccess:properties.publicAccess}"
+
+# Verify workflows deployed
+az logicapp workflow list \
+  --resource-group <rg-name> \
+  --name <logic-app-name> \
+  --query "[?contains(name,'appeal')].{Name:name, State:state}" \
+  --output table
+
+# Expected output:
+# Name                          State
+# ----------------------------  -------
+# appeal_to_payer               Enabled
+# appeal_update_to_payer        Enabled
+# appeal_get_details            Enabled
+# appeal_update_to_availity     Enabled
+# attachment_processor          Enabled
+```
+
+#### Configure Availity Webhook
+
+Register the webhook URL in Availity Bedlam portal:
+
+1. **Webhook URL**: `https://<logic-app-name>.azurewebsites.net/api/appeal/update-to-availity/triggers/HTTP_Availity_Webhook/invoke?api-version=2022-05-01&sp=%2Ftriggers%2FHTTP_Availity_Webhook%2Frun&sv=1.0&sig=<SIG>`
+2. **Signature Algorithm**: HMAC-SHA256
+3. **Events**: STATUS_UPDATE, DECISION, CORRESPONDENCE
+
+**Note**: Obtain exact webhook URL from Azure Portal → Logic App → appeal_update_to_availity workflow → Overview → Callback URL
+
+#### Post-Deployment Testing
+
+```bash
+# Test appeal submission (replace with actual values)
+curl -X POST "https://<logic-app>.azurewebsites.net/api/appeal/to-payer/..." \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d @test-appeal-request.json
+
+# Monitor workflow runs
+az logicapp workflow run list \
+  --resource-group <rg-name> \
+  --name <logic-app-name> \
+  --workflow-name appeal_to_payer \
+  --top 5
+
+# Check Application Insights for appeals events
+az monitor app-insights events show \
+  --app <app-insights-name> \
+  --resource-group <rg-name> \
+  --type customEvents \
+  --filter "customDimensions/eventName eq 'AppealSubmitted'"
+```
+
+#### Documentation
+
+For complete appeals integration documentation, see:
+- [docs/APPEALS-INTEGRATION.md](docs/APPEALS-INTEGRATION.md) - Implementation guide (600+ lines)
+- [docs/APPEALS-BACKEND-INTERFACE.md](docs/APPEALS-BACKEND-INTERFACE.md) - Interface specifications
+- [docs/api/APPEALS-OPENAPI.yaml](docs/api/APPEALS-OPENAPI.yaml) - REST API specification
+- JSON Schemas: `schemas/Appeal-*.json` - Request/response validation schemas
+
 ## Environment Protection Rules and Approval Gates
 
 This section describes how to configure GitHub Environment protection rules to require manual approvals before deployments to UAT and PROD environments.
