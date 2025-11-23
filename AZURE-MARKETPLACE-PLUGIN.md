@@ -12,7 +12,7 @@ Cloud Health Office is available on the **Azure Marketplace** for rapid, one-cli
 
 ### Key Benefits
 
-- **&lt;1 Hour Deployment**: Automated infrastructure provisioning
+- **<1 Hour Deployment**: Automated infrastructure provisioning
 - **Zero Manual Configuration**: Pre-configured Logic Apps workflows
 - **Production-Ready Security**: HIPAA-compliant from deployment
 - **Immediate Value**: Process EDI transactions within hours
