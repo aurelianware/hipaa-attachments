@@ -39,6 +39,13 @@ We chose Apache 2.0 because it:
 This repository implements an Azure Logic Apps solution for processing HIPAA-compliant medical attachments with secure X12 EDI processing, Service Bus messaging, and Data Lake storage.
 
 ### Quick Links
+
+**For New External Contributors:**
+- 👥 **[Contributor Onboarding Guide](CONTRIBUTOR-ONBOARDING.md)** - Complete guide for external developers
+- 💰 **[Bounty Program](BOUNTY-PROGRAM.md)** - Earn rewards for high-value contributions
+- 🚀 **[Azure Marketplace Plugin](AZURE-MARKETPLACE-PLUGIN.md)** - One-click deployment guide
+
+**Technical Documentation:**
 - 📖 **[Architecture Documentation](ARCHITECTURE.md)** - System design and data flows
 - 🚀 **[Deployment Guide](DEPLOYMENT.md)** - Step-by-step deployment procedures
 - 🌿 **[Branching Strategy](BRANCHING-STRATEGY.md)** - Branch conventions and merge requirements
