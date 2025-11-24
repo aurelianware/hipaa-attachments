@@ -281,7 +281,9 @@ az deployment group create \
 
 1. Click the **Deploy to Azure** button below:
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Faurelianware%2Fcloudhealthoffice%2Fmain%2Finfra%2Fmain.bicep)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Faurelianware%2Fcloudhealthoffice%2Fmain%2Finfra%2Fmain.json)
+
+> **Note**: The template URL should point to the compiled ARM JSON template, not the Bicep file. Ensure `infra/main.json` is available in the repository or compile `main.bicep` to JSON before using this button.
 
 2. Fill in the required parameters
 3. Click **Review + create**

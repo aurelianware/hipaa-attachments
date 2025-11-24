@@ -41,7 +41,7 @@ Cloud Health Office is a **configuration-driven multi-tenant SaaS platform** tha
 
 ### Option 1: Azure Marketplace (Recommended)
 
-1. Navigate to [Azure Marketplace](#) (link TBD)
+1. Azure Marketplace listing pending approval – deployment available via manual installation (see Option 2 below)
 2. Search for "Cloud Health Office Sentinel"
 3. Click "Get It Now"
 4. Complete deployment wizard (15 minutes)

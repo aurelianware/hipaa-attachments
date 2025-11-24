@@ -622,8 +622,8 @@ A: Yes, in your bounty proposal. But maintainers have final say on amount based 
 
 - **GitHub Issues**: Subscribe to `bounty` label
 - **GitHub Discussions**: Watch "Bounty Proposals" category
-- **Twitter/X**: [@CloudHealthOffice](https://twitter.com/cloudhealthoffice)
-- **Newsletter**: [Subscribe for monthly bounty updates](#)
+- **Twitter/X**: Official account coming soon
+- **Newsletter**: Monthly bounty updates coming soon
 
 ---
 
