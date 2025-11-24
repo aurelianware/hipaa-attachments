@@ -200,7 +200,7 @@ We welcome contributions! Cloud Health Office has an active **[Bounty Program](B
 - **Silver**: $10,000/payer/year (priority support + custom dev)
 - **Gold**: $15,000/payer/year (24/7 support + dedicated AM)
 
-**[💵 Full Pricing Details](docs/COMMERCIALIZATION.md)**
+**[💵 Full Pricing Details](#managed-services)**
 
 ---
 
