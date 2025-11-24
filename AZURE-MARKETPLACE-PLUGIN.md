@@ -651,7 +651,7 @@ After successful marketplace deployment:
 2. **Configure Workflows**: Review [DEPLOYMENT.md](DEPLOYMENT.md) for workflow customization
 3. **Set Up Monitoring**: Configure alerts in [Application Insights](https://docs.microsoft.com/azure/azure-monitor/app/app-insights-overview)
 4. **Test End-to-End**: Use test files in repository to validate complete workflow
-5. **Production Hardening**: Review [SECURITY-HARDENING.md](SECURITY-HARDENING.md) for production checklist
+5. **Production Hardening**: Review [SECURITY.md](SECURITY.md) for production checklist
 
 ---
 
