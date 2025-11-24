@@ -93,7 +93,6 @@ az deployment group create \
 ### Technical Documentation
 
 - **[🔐 Security Guide](SECURITY.md)** - HIPAA compliance and security
-- **[🛠️ Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
 - **[🌿 Branching Strategy](BRANCHING-STRATEGY.md)** - Git workflow and conventions
 - **[📊 API Reference](docs/api/)** - OpenAPI specifications
 
