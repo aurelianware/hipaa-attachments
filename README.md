@@ -150,7 +150,7 @@ We welcome contributions! Cloud Health Office has an active **[Bounty Program](B
 | Prior Authorization AI | $1,000 | Hard |
 | Claim Auto-Adjudication | $1,500 | Hard |
 | Multi-Language Support | $750 | Medium |
-| Performance Dashboard | $800 | Medium |
+| Performance Dashboard | $600 | Medium |
 
 **[💰 View All Bounties](BOUNTY-PROGRAM.md)**
 
