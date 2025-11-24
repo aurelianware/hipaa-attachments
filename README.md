@@ -79,7 +79,7 @@ az deployment group create \
 ### Getting Started
 
 - **[🚀 Azure Marketplace Plugin](AZURE-MARKETPLACE-PLUGIN.md)** - One-click deployment guide
-- **[�� Onboarding Guide](ONBOARDING.md)** - Complete setup and configuration
+- **[🧭 Platform Onboarding Guide](PLATFORM-ONBOARDING.md)** - Complete setup and configuration
 - **[🏗️ Architecture Overview](ARCHITECTURE.md)** - System design and data flows
 - **[🔧 Deployment Guide](DEPLOYMENT.md)** - Manual deployment procedures
 
