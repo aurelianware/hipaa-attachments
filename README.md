@@ -9,6 +9,8 @@ The #1 open-source, Azure-native, multi-payer EDI integration platform for healt
 
 > **📢 Major Updates Since v1.0.0**: Zero-code payer onboarding, FHIR R4 integration, ValueAdds277 enhanced claim status, production-grade security (9/10 score), and comprehensive testing suite. See **[What's New](./WHATS-NEW.md)** for highlights or [FEATURES.md](./FEATURES.md) for complete details.
 
+> **🚀 v2 Preview Available**: CMS-0057-F interoperability APIs in active development. Patient Access API foundation complete, Provider Directory and Payer-to-Payer APIs coming Q1-Q2 2025. [View v2 Roadmap →](./CHANGELOG.md#v200-roadmap---complete-timeline)
+
 ## 🚀 Quick Start
 
 Deploy a complete HIPAA-compliant EDI platform in **&lt;5 minutes**:
@@ -20,7 +22,52 @@ Deploy a complete HIPAA-compliant EDI platform in **&lt;5 minutes**:
 
 See [QUICKSTART.md](./QUICKSTART.md) for detailed guide.
 
-## ✨ What's New
+## 🚀 What's New in v2 (Preview)
+
+### CMS-0057-F Interoperability & Patient Access APIs
+
+Cloud Health Office v2.0.0 brings **federal CMS compliance** for interoperability mandates, transforming the platform into a complete multi-standard hub supporting both traditional X12 EDI and modern FHIR APIs.
+
+**Current Status**: Foundation complete, full compliance targeted Q3 2025
+
+#### Patient Access API (§ 422.119, § 431.60) - 60% Complete
+- ✅ **FHIR R4 Patient Resource** - Transform X12 270 eligibility to FHIR Patient (complete)
+- ✅ **US Core Patient Profile** - v3.1.1 compliant implementation (complete)
+- 🔄 **CoverageEligibilityResponse** - X12 271 → FHIR R4 (Q1 2025)
+- 🔄 **Claims & EOB** - X12 837/835 → FHIR Claim/ExplanationOfBenefit (Q2 2025)
+- 🔄 **SMART on FHIR** - OAuth 2.0 for patient-authorized apps (Q2 2025)
+
+#### Provider Directory API (§ 422.123, § 431.60) - 20% Complete
+- 🔄 **Practitioner & PractitionerRole** - Provider demographics and networks (Q2 2025)
+- 🔄 **Organization & Location** - Facilities and service locations (Q2 2025)
+- 🔄 **Real-Time Updates** - NPPES and credentialing sync (Q3 2025)
+
+#### Payer-to-Payer Data Exchange (§ 422.120, § 431.60) - 10% Complete
+- 🔄 **FHIR Bulk Data Export** - Patient-requested data portability (Q1 2025)
+- 🔄 **Consent Management** - Patient authorization tracking (Q1 2025)
+- 🔄 **Secure Transfer** - Encrypted payer-to-payer connections (Q2 2025)
+
+#### Prior Authorization API (§ 422.123, § 431.60) - 30% Complete
+- ✅ **X12 278 Processing** - Authorization requests and inquiries (complete)
+- 🔄 **FHIR ServiceRequest** - X12 278 → FHIR transformation (Q2 2025)
+- 🔄 **Da Vinci PAS** - Prior Authorization Support IG (Q3 2025)
+- 🔄 **Real-Time Decisions** - Instant authorization via FHIR (Q3 2025)
+
+**Compliance Deadline**: January 2027 (Prior Authorization API)  
+**Target Release**: Q3 2025  
+**Documentation**: [CMS-0057-F Compliance Guide →](./docs/CMS-0057-F-COMPLIANCE.md)
+
+### Sandbox Testing & Developer Resources
+- 🧪 **Test Environment** - Synthetic patient data and pre-populated FHIR server (Q1 2025)
+- 📚 **API Documentation** - Complete FHIR resource guides with examples (Q1 2025)
+- 🔑 **Self-Service Registration** - API keys for developers and early adopters (Q1 2025)
+- 🤝 **Early Adopter Program** - Limited to 10 health plans, apply now for beta access
+
+**Learn More**: [View Complete v2 Roadmap →](./CHANGELOG.md#v200-roadmap---complete-timeline) | [Join Early Adopters →](./docs/CMS-0057-F-COMPLIANCE.md#contact--early-adopter-program)
+
+---
+
+## ✨ What's New in v1 (Delivered)
 
 ### Enhanced Onboarding Experience
 
@@ -185,6 +232,7 @@ Production-ready security for PHI workloads:
 - [ECS Integration](./docs/ECS-INTEGRATION.md) - Enhanced Claim Status API
 
 ### Security & Compliance
+- **[CMS-0057-F Compliance](./docs/CMS-0057-F-COMPLIANCE.md)** - Interoperability & Patient Access APIs roadmap
 - [Security Hardening](./SECURITY-HARDENING.md) - Production security controls
 - [HIPAA Compliance Matrix](./docs/HIPAA-COMPLIANCE-MATRIX.md) - Regulatory mapping
 - [Security Guide](./SECURITY.md) - General security practices

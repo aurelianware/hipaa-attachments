@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cloud Health Office Release Notes - Track all features delivered since v1 and planned for v2, including CMS-0057-F interoperability APIs." />
+  <meta name="keywords" content="release notes, changelog, CMS-0057-F, FHIR, interoperability, Patient Access API, Provider Directory, Prior Authorization" />
+  <title>Release Notes - Cloud Health Office</title>
+  <link rel="stylesheet" href="css/sentinel.css" />
+  <style>
+    /* Release notes specific styles */
+    body { padding: 20px 40px; max-width: 1200px; margin: 0 auto; }
+    .release-section { margin: 60px 0; }
+    .release-header { 
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+      border-left: 4px solid #00ffff;
+      padding: 30px;
+      margin-bottom: 30px;
+      border-radius: 8px;
+    }
+    .release-header h2 { 
+      color: #00ffff; 
+      text-shadow: 0 0 20px rgba(0,255,255,0.8);
+      margin: 0 0 10px 0;
+    }
+    .release-header .meta {
+      color: #00ff88;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 30px 0;
+    }
+    .feature-card {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 25px;
+      transition: all 0.3s ease;
+    }
+    .feature-card:hover {
+      border-color: #00ffff;
+      box-shadow: 0 0 20px rgba(0,255,255,0.2);
+    }
+    .feature-card h3 {
+      color: #00ffff;
+      font-size: 1.3rem;
+      margin: 0 0 15px 0;
+    }
+    .feature-card .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    .status.complete { background: #00ff88; color: #000; }
+    .status.progress { background: #ffaa00; color: #000; }
+    .status.planned { background: #666; color: #fff; }
+    .feature-list {
+      list-style: none;
+      padding: 0;
+      margin: 15px 0;
+    }
+    .feature-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid #222;
+    }
+    .feature-list li:before {
+      content: "✓ ";
+      color: #00ff88;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+    .cta-banner {
+      background: linear-gradient(135deg, #001a1a 0%, #003333 100%);
+      border: 2px solid #00ffff;
+      border-radius: 12px;
+      padding: 40px;
+      margin: 60px 0;
+      text-align: center;
+    }
+    .cta-banner h2 {
+      color: #00ffff;
+      text-shadow: 0 0 20px rgba(0,255,255,0.8);
+      margin: 0 0 20px 0;
+    }
+    .timeline {
+      position: relative;
+      padding-left: 40px;
+      margin: 40px 0;
+    }
+    .timeline:before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, #00ffff 0%, #00ff88 100%);
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 40px;
+    }
+    .timeline-item:before {
+      content: '';
+      position: absolute;
+      left: -45px;
+      top: 5px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #00ffff;
+      box-shadow: 0 0 10px rgba(0,255,255,0.8);
+    }
+    .timeline-item h3 {
+      color: #00ff88;
+      margin: 0 0 10px 0;
+    }
+    .roadmap-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 30px 0;
+    }
+    .roadmap-table th {
+      background: #1a1a1a;
+      color: #00ffff;
+      padding: 15px;
+      text-align: left;
+      border-bottom: 2px solid #00ffff;
+    }
+    .roadmap-table td {
+      padding: 15px;
+      border-bottom: 1px solid #333;
+    }
+    .roadmap-table tr:hover {
+      background: #0a0a0a;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+  <header style="text-align: center; margin-bottom: 60px;">
+    <a href="index.html">
+      <img src="https://github.com/aurelianware/cloudhealthoffice/raw/main/docs/images/logo-cloudhealthoffice-sentinel-primary.svg" alt="Cloud Health Office Sentinel Logo" style="max-width: 200px;">
+    </a>
+    <h1>Release Notes & Changelog</h1>
+    <p class="glow" style="font-size: 1.2rem;">Track features delivered since v1.0.0 and the v2 roadmap</p>
+  </header>
+
+  <main id="main-content">
+
+    <!-- CMS-0057-F Banner -->
+    <div class="cta-banner">
+      <h2>🚀 v2 Preview: CMS-0057-F Interoperability APIs</h2>
+      <p style="font-size: 1.1rem; margin: 20px 0;">
+        Cloud Health Office v2.0.0 brings federal compliance for CMS Patient Access, Provider Directory, 
+        Payer-to-Payer, and Prior Authorization mandates.
+      </p>
+      <p style="opacity: 0.9;">
+        <strong>Patient Access API Foundation:</strong> ✅ Complete (FHIR R4 Patient resource operational)<br>
+        <strong>Full Compliance Target:</strong> Q3 2025 | <strong>Regulatory Deadline:</strong> January 2027
+      </p>
+      <a href="#v2-roadmap" class="button">View v2 Roadmap</a>
+      <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/docs/CMS-0057-F-COMPLIANCE.md" class="button" style="background: #00ff88; border-color: #00ff88;">Read Compliance Guide</a>
+    </div>
+
+    <!-- Version 1.0.0 Release -->
+    <section class="release-section">
+      <div class="release-header">
+        <h2>v1.0.0 - The Sentinel Has Awakened</h2>
+        <div class="meta">Released: November 21, 2024 | Production-Ready | HIPAA-Compliant</div>
+      </div>
+
+      <p style="font-size: 1.1rem; margin-bottom: 30px;">
+        The first production release of Cloud Health Office — the open-source, Azure-native, HIPAA-engineered 
+        platform that ends decades of payer EDI pain. Deploy complete EDI integration in <strong>&lt;1 hour</strong> 
+        with <strong>zero custom code</strong>.
+      </p>
+
+      <h3 style="color: #00ffff; margin-top: 40px;">Core EDI Transactions</h3>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>275 Attachments</h3>
+          <span class="status complete">PRODUCTION</span>
+          <p>Clinical and administrative attachment processing with file validation, SFTP polling, and automatic QNXT correlation.</p>
+        </div>
+        <div class="feature-card">
+          <h3>277 RFAI</h3>
+          <span class="status complete">PRODUCTION</span>
+          <p>Request for Additional Information outbound workflow with Service Bus triggers and Data Lake archival.</p>
+        </div>
+        <div class="feature-card">
+          <h3>278 Authorizations</h3>
+          <span class="status complete">PRODUCTION</span>
+          <p>Prior authorization requests (inpatient, outpatient, referrals) with HTTP replay endpoint and real-time inquiry.</p>
+        </div>
+        <div class="feature-card">
+          <h3>837 Claims</h3>
+          <span class="status complete">PRODUCTION</span>
+          <p>Professional, Institutional, and Dental claims submission with synthetic test data generator.</p>
+        </div>
+        <div class="feature-card">
+          <h3>270/271 Eligibility</h3>
+          <span class="status complete">PRODUCTION</span>
+          <p>Real-time eligibility verification with 6 search methods and FHIR R4 transformation ready.</p>
+        </div>
+        <div class="feature-card">
+          <h3>276/277 Claim Status</h3>
+          <span class="status complete">PRODUCTION</span>
+          <p>Claim status inquiries with date range filtering and ValueAdds277 enhanced response fields.</p>
+        </div>
+      </div>
+
+      <h3 style="color: #00ffff; margin-top: 40px;">Key Highlights</h3>
+      <ul class="feature-list">
+        <li><strong>Onboarding time reduction:</strong> 6–18 months (legacy) → &lt;1 hour</li>
+        <li><strong>Professional services cost elimination:</strong> $500k–$2M → $0 (BYOS)</li>
+        <li><strong>First production-grade QNXT REST correlation</strong> in open source</li>
+        <li><strong>Complete source code transparency:</strong> No black boxes, fully auditable</li>
+        <li><strong>Azure Marketplace ready:</strong> Prepared for Managed Application publishing</li>
+      </ul>
+    </section>
+
+    <!-- Post-v1 Enhancements -->
+    <section class="release-section">
+      <div class="release-header">
+        <h2>Post v1.0.0 Enhancements (November 2024)</h2>
+        <div class="meta">Status: Delivered | 96% Onboarding Time Reduction | 9/10 Security Score</div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>Config-to-Workflow Generator</h3>
+          <span class="status complete">COMPLETE</span>
+          <p><strong>Zero-code payer onboarding</strong> - Transform JSON to complete deployment artifacts in minutes. Interactive wizard, 30+ Handlebars helpers, 23-test suite.</p>
+          <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+            <strong>Impact:</strong> Multi-week project → Minutes<br>
+            <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/docs/CONFIG-TO-WORKFLOW-GENERATOR.md" style="color: #00ffff;">Documentation →</a>
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <h3>FHIR R4 Integration</h3>
+          <span class="status complete">COMPLETE</span>
+          <p><strong>X12 270 → FHIR R4</strong> transformation with Patient and CoverageEligibilityRequest. US Core 3.1.1 compliant, 19 tests, zero vulnerabilities.</p>
+          <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+            <strong>Impact:</strong> 14 months ahead of roadmap<br>
+            <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/docs/FHIR-INTEGRATION.md" style="color: #00ffff;">Documentation →</a>
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <h3>ValueAdds277 Enhanced Claim Status</h3>
+          <span class="status complete">COMPLETE</span>
+          <p><strong>60+ enhanced response fields</strong> - Financial, clinical, demographics, remittance. 6 integration flags for seamless cross-module workflows.</p>
+          <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+            <strong>ROI:</strong> $69,600/year for providers (1,000 lookups/month)<br>
+            <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/VALUEADDS277-IMPLEMENTATION-COMPLETE.md" style="color: #00ffff;">Documentation →</a>
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <h3>Security Hardening</h3>
+          <span class="status complete">COMPLETE</span>
+          <p><strong>9/10 security score achieved</strong> - Premium Key Vault (HSM), private endpoints, PHI masking, customer-managed keys, 7-year retention.</p>
+          <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+            <strong>Compliance:</strong> 100% HIPAA § 164.312 technical safeguards<br>
+            <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/SECURITY-HARDENING.md" style="color: #00ffff;">Documentation →</a>
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <h3>Gated Release Strategy</h3>
+          <span class="status complete">COMPLETE</span>
+          <p><strong>UAT/PROD approval workflows</strong> - Pre-approval security scanning, automated audit logging, rollback automation, 30-minute hotfix SLA.</p>
+          <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+            <strong>Governance:</strong> 1-2 approvers (UAT), 2-3 approvers (PROD)<br>
+            <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/DEPLOYMENT-GATES-GUIDE.md" style="color: #00ffff;">Documentation →</a>
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <h3>Onboarding Enhancements</h3>
+          <span class="status complete">COMPLETE</span>
+          <p><strong>96% time reduction</strong> - Interactive wizard, synthetic 837 generator, E2E test suite, one-click Azure deploy, CI/CD PHI validation.</p>
+          <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+            <strong>Quality:</strong> 87.5% error reduction (40% → &lt;5%)<br>
+            <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/ONBOARDING-ENHANCEMENTS.md" style="color: #00ffff;">Documentation →</a>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- v2 Roadmap -->
+    <section id="v2-roadmap" class="release-section">
+      <div class="release-header">
+        <h2>v2.0.0 Roadmap - CMS-0057-F Compliance</h2>
+        <div class="meta">Target Release: Q3 2025 | Regulatory Deadline: January 2027 (Prior Auth API)</div>
+      </div>
+
+      <p style="font-size: 1.1rem; margin-bottom: 30px;">
+        Transform Cloud Health Office from best-in-class X12 EDI processor to complete <strong>multi-standard 
+        interoperability hub</strong> supporting both traditional EDI and modern FHIR APIs for federal compliance.
+      </p>
+
+      <h3 style="color: #00ffff; margin-top: 40px;">CMS-0057-F Compliance Status</h3>
+
+      <table class="roadmap-table">
+        <thead>
+          <tr>
+            <th>API Mandate</th>
+            <th>CMS Requirement</th>
+            <th>Status</th>
+            <th>Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Patient Access API</strong></td>
+            <td>§ 422.119, § 431.60</td>
+            <td><span class="status progress">60% COMPLETE</span></td>
+            <td>Q2 2025</td>
+          </tr>
+          <tr>
+            <td><strong>Provider Directory API</strong></td>
+            <td>§ 422.123, § 431.60</td>
+            <td><span class="status planned">20% COMPLETE</span></td>
+            <td>Q2 2025</td>
+          </tr>
+          <tr>
+            <td><strong>Payer-to-Payer API</strong></td>
+            <td>§ 422.120, § 431.60</td>
+            <td><span class="status planned">10% COMPLETE</span></td>
+            <td>Q2 2025</td>
+          </tr>
+          <tr>
+            <td><strong>Prior Authorization API</strong></td>
+            <td>§ 422.123, § 431.60</td>
+            <td><span class="status progress">30% COMPLETE</span></td>
+            <td>Q3 2025</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="color: #00ffff; margin-top: 40px;">Development Timeline</h3>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <h3>Q1 2025 (Jan-Mar): Foundation for Interoperability</h3>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            <li><strong>X12 271 → FHIR CoverageEligibilityResponse</strong> - Complete bidirectional eligibility</li>
+            <li><strong>FHIR → X12 270 Transformation</strong> - Outbound FHIR queries to X12</li>
+            <li><strong>Azure Health Data Services Integration</strong> - Managed FHIR server</li>
+            <li><strong>FHIR Bulk Data Export ($export)</strong> - Data portability for payer-to-payer</li>
+            <li><strong>Patient Consent Module</strong> - Capture and enforce consent</li>
+            <li><strong>Sandbox Environment</strong> - Synthetic data and test harness</li>
+          </ul>
+        </div>
+
+        <div class="timeline-item">
+          <h3>Q2 2025 (Apr-Jun): Complete Patient & Provider APIs</h3>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            <li><strong>X12 837 → FHIR Claim</strong> - Professional, institutional, dental</li>
+            <li><strong>X12 835 → FHIR ExplanationOfBenefit</strong> - Remittance details</li>
+            <li><strong>SMART on FHIR Authentication</strong> - OAuth 2.0 for patient apps</li>
+            <li><strong>Provider Directory (Complete)</strong> - Practitioner, PractitionerRole, Organization, Location</li>
+            <li><strong>Da Vinci PDex & PAS</strong> - Payer Data Exchange and Prior Authorization profiles</li>
+            <li><strong>Azure Marketplace Launch</strong> - Transactable SaaS offer</li>
+          </ul>
+        </div>
+
+        <div class="timeline-item">
+          <h3>Q3 2025 (Jul-Sep): AI-Powered Automation</h3>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            <li><strong>Prior Authorization API (Complete)</strong> - Real-time authorization via FHIR</li>
+            <li><strong>Provider & Member Portals</strong> - Self-service claim submission and tracking</li>
+            <li><strong>AI Claims Adjudication</strong> - Automated adjudication with ML</li>
+            <li><strong>Predictive Denial Management</strong> - Pre-submission validation</li>
+            <li><strong>NLP Clinical Documentation</strong> - Extract structured data from PDFs</li>
+          </ul>
+        </div>
+
+        <div class="timeline-item">
+          <h3>Q4 2025 (Oct-Dec): International & Advanced</h3>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            <li><strong>International Standards</strong> - Canadian EDI, European FHIR, GDPR/PIPEDA</li>
+            <li><strong>Real-Time Benefit Check (RTBC)</strong> - Instant formulary and cost-sharing</li>
+            <li><strong>HEDIS & Stars Reporting</strong> - Quality measures via FHIR</li>
+            <li><strong>Multi-Cloud Kubernetes</strong> - Deploy on AKS, EKS, GKE</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sandbox & Developer Resources -->
+    <section class="release-section">
+      <div class="release-header">
+        <h2>Sandbox Testing & Developer Resources</h2>
+        <div class="meta">Coming Q1 2025 | Self-Service API Registration</div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>Sandbox Environment</h3>
+          <p><strong>Synthetic patient data</strong> with pre-populated FHIR server for testing all CMS-0057-F APIs without real PHI.</p>
+          <ul style="margin: 15px 0 0 0; padding-left: 20px; font-size: 0.9rem;">
+            <li>100+ synthetic patients with claims history</li>
+            <li>Complete FHIR R4 resource examples</li>
+            <li>Pre-configured test scenarios</li>
+            <li>Mock authorization backend</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <h3>API Documentation</h3>
+          <p><strong>Complete FHIR resource guides</strong> with examples, code samples in Python/JavaScript/C#, and Postman collections.</p>
+          <ul style="margin: 15px 0 0 0; padding-left: 20px; font-size: 0.9rem;">
+            <li>Interactive API explorer</li>
+            <li>Request/response examples</li>
+            <li>Error handling guides</li>
+            <li>OAuth 2.0 setup tutorials</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <h3>Self-Service Registration</h3>
+          <p><strong>API keys for developers</strong> and early adopter access to beta features before general release.</p>
+          <ul style="margin: 15px 0 0 0; padding-left: 20px; font-size: 0.9rem;">
+            <li>Instant API key provisioning</li>
+            <li>Rate limit monitoring dashboard</li>
+            <li>Usage analytics and billing</li>
+            <li>Technical support access</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Early Adopter CTA -->
+    <div class="cta-banner">
+      <h2>Join the Early Adopter Program</h2>
+      <p style="font-size: 1.1rem; margin: 20px 0;">
+        Limited to <strong>10 health plans</strong>. Get beta access to v2 features, influence priorities, 
+        and receive discounted pricing during the pilot phase.
+      </p>
+      <p style="opacity: 0.9; margin-bottom: 30px;">
+        ✓ Direct line to engineering team<br>
+        ✓ Access features before general release<br>
+        ✓ Recognition as innovation partner<br>
+        ✓ Discounted pricing during pilot
+      </p>
+      <a href="mailto:sales@aurelianware.com?subject=Early%20Adopter%20Program%20Application" class="button" style="background: #00ff88; border-color: #00ff88;">Apply Now</a>
+      <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/docs/CMS-0057-F-COMPLIANCE.md#contact--early-adopter-program" class="button">Learn More</a>
+    </div>
+
+    <!-- Links -->
+    <section style="margin: 60px 0; text-align: center;">
+      <h2 style="color: #00ffff; margin-bottom: 30px;">Additional Resources</h2>
+      <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+        <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/CHANGELOG.md" class="button">Complete Changelog</a>
+        <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/FEATURES.md" class="button">Feature Matrix</a>
+        <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/ROADMAP.md" class="button">Product Roadmap</a>
+        <a href="https://github.com/aurelianware/cloudhealthoffice/releases" class="button">GitHub Releases</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer style="text-align: center; padding: 40px 0; border-top: 1px solid #333; margin-top: 80px;">
+    <p>
+      <strong>Cloud Health Office v1.0.0 — The Sentinel</strong><br>
+      Production-Grade | HIPAA-Compliant | Azure-Native | Open Source
+    </p>
+    <p>
+      <a href="index.html">Home</a> • 
+      <a href="platform.html">Platform</a> • 
+      <a href="assessment.html">Assessment</a> • 
+      <a href="release-notes.html" style="color: #00ffff;">Release Notes</a> • 
+      <a href="https://github.com/aurelianware/cloudhealthoffice">GitHub</a>
+    </p>
+    <p style="margin-top: 20px; opacity: 0.7;">
+      Apache 2.0 License • © 2025 Aurelianware<br>
+      <a href="mailto:mark@aurelianware.com">Contact</a> • 
+      <a href="https://github.com/aurelianware/cloudhealthoffice/blob/main/docs/CMS-0057-F-COMPLIANCE.md">CMS-0057-F Compliance</a>
+    </p>
+  </footer>
+</body>
+</html>

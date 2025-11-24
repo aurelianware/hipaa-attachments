@@ -5,7 +5,70 @@ All notable changes to Cloud Health Office will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Post v1.0.0 Enhancements
+## [Unreleased] - v2.0.0 Development (CMS-0057-F Alignment)
+
+### Vision: Complete CMS Interoperability & Patient Access Compliance
+
+Cloud Health Office v2.0.0 focuses on meeting federal CMS-0057-F (CMS-9115-F) interoperability mandates while expanding core EDI capabilities. This release transforms the platform from a best-in-class X12 EDI processor into a complete **multi-standard interoperability hub** supporting both traditional EDI and modern FHIR APIs.
+
+**Regulatory Compliance Target**: January 2027 (Prior Authorization API deadline)  
+**Release Target**: Q3 2025  
+**Documentation**: [CMS-0057-F-COMPLIANCE.md](./docs/CMS-0057-F-COMPLIANCE.md)
+
+---
+
+### CMS-0057-F Compliance Roadmap
+
+#### Patient Access API (§ 422.119, § 431.60)
+**Mandate**: Secure, standards-based API for patient access to claims, clinical data, and costs.  
+**Status**: 60% Complete | **Target**: Q2 2025
+
+- ✅ **FHIR R4 Patient Resource** - X12 270 → FHIR R4 (November 2024)
+- ✅ **CoverageEligibilityRequest** - Complete US Core 3.1.1 support (November 2024)
+- 🔄 **CoverageEligibilityResponse** - X12 271 → FHIR R4 (Q1 2025)
+- 🔄 **FHIR → X12 270** - Outbound FHIR queries (Q1 2025)
+- 🔄 **Claim Resource** - X12 837 → FHIR R4 (Q2 2025)
+- 🔄 **ExplanationOfBenefit** - X12 835 → FHIR R4 (Q2 2025)
+- 🔄 **SMART on FHIR Authentication** - OAuth 2.0 for patient apps (Q2 2025)
+- 🔄 **Patient Portal Integration** - Member-facing UI (Q2 2025)
+
+#### Provider Directory API (§ 422.123, § 431.60)
+**Mandate**: Publicly accessible provider directory via standards-based API.  
+**Status**: 20% Complete | **Target**: Q2 2025
+
+- 🔄 **Practitioner Resource** - Provider demographics and identifiers (Q2 2025)
+- 🔄 **PractitionerRole Resource** - Specialties, locations, networks (Q2 2025)
+- 🔄 **Organization Resource** - Facilities and group practices (Q2 2025)
+- 🔄 **Location Resource** - Physical addresses and service locations (Q2 2025)
+- 🔄 **Real-Time Directory Updates** - NPPES and credentialing sync (Q3 2025)
+- 🔄 **Public API Gateway** - Unauthenticated read access (Q2 2025)
+
+#### Payer-to-Payer Data Exchange (§ 422.120, § 431.60)
+**Mandate**: Patient-requested clinical data exchange between payers.  
+**Status**: 10% Complete | **Target**: Q2 2025
+
+- 🔄 **FHIR Bulk Data Export** - $export operation for all resources (Q1 2025)
+- 🔄 **Patient Consent Management** - Capture and enforce consent (Q1 2025)
+- 🔄 **Secure Transfer Protocol** - Encrypted payer-to-payer transmission (Q2 2025)
+- 🔄 **Clinical Data Mapping** - X12 → FHIR transformation (Q2 2025)
+- 🔄 **ADT Event Handling** - Admit/discharge/transfer workflows (Q3 2025)
+
+#### Prior Authorization API (§ 422.123, § 431.60)
+**Mandate**: FHIR-based prior authorization with real-time status.  
+**Status**: 30% Complete | **Target**: Q3 2025 (Deadline: January 2027)
+
+- ✅ **X12 278 Authorization Requests** - Inbound processing (November 2024)
+- ✅ **X12 278 Authorization Inquiry** - Real-time status (November 2024)
+- ✅ **HTTP Replay Endpoint** - Deterministic reprocessing (November 2024)
+- 🔄 **ServiceRequest Resource** - X12 278 → FHIR R4 (Q2 2025)
+- 🔄 **Da Vinci PAS Implementation** - Prior Authorization Support IG (Q2 2025)
+- 🔄 **Task Resource** - Authorization status tracking (Q3 2025)
+- 🔄 **Real-Time Authorization** - Instant decisions via FHIR (Q3 2025)
+- 🔄 **Clinical Documentation** - X12 275 ↔ FHIR DocumentReference (Q3 2025)
+
+---
+
+## [Unreleased] - Post v1.0.0 Enhancements (Delivered)
 
 ### Added
 
@@ -258,6 +321,107 @@ Legacy EDI integration is now optional.
 **Just emerged from the void.**
 
 Star ★ the repo if you believe payers deserve better than 1990s technology in 2025.
+
+---
+
+## v2.0.0 Roadmap - Complete Timeline
+
+### Q1 2025 (January - March): Foundation for Interoperability
+
+#### FHIR R4 Expansion
+- [ ] **X12 271 → FHIR CoverageEligibilityResponse** - Complete bidirectional eligibility mapping
+- [ ] **FHIR → X12 270 Transformation** - Outbound FHIR queries converted to X12
+- [ ] **Azure Health Data Services Integration** - Managed FHIR server deployment
+- [ ] **FHIR Resource Validation Library** - Comprehensive validation for all resources
+
+#### Payer-to-Payer Foundation
+- [ ] **FHIR Bulk Data Export ($export)** - Complete implementation for data portability
+- [ ] **Patient Consent Module** - Capture, store, and enforce patient consent
+- [ ] **Clinical Data Repository** - Centralized storage for cross-payer exchange
+- [ ] **Secure Transfer Protocol** - Encrypted, audited payer-to-payer connections
+
+#### Platform Enhancements
+- [ ] **Azure AD B2C Integration** - Customer SSO and multi-tenant authentication
+- [ ] **Enhanced Analytics Dashboard** - Power BI integration for real-time metrics
+- [ ] **API Gateway** - Rate limiting, JWT validation, developer portal
+- [ ] **Sandbox Environment** - Synthetic data and test harness for developers
+
+### Q2 2025 (April - June): Complete Patient & Provider APIs
+
+#### Patient Access API (Complete)
+- [ ] **X12 837 → FHIR Claim** - Professional, institutional, dental claims transformation
+- [ ] **X12 835 → FHIR ExplanationOfBenefit** - Remittance and payment details
+- [ ] **SMART on FHIR Authentication** - OAuth 2.0 for patient-authorized apps
+- [ ] **Da Vinci PDex Implementation** - Payer Data Exchange profile compliance
+- [ ] **Member Portal** - Patient-facing UI for claims, EOBs, and appeals
+
+#### Provider Directory API (Complete)
+- [ ] **FHIR Practitioner Resource** - Provider demographics with NPI integration
+- [ ] **FHIR PractitionerRole Resource** - Specialties, locations, payer networks
+- [ ] **FHIR Organization Resource** - Facilities, hospitals, group practices
+- [ ] **FHIR Location Resource** - Physical addresses and service locations
+- [ ] **Real-Time Directory Updates** - Sync with credentialing and NPPES
+- [ ] **Public API Gateway** - Unauthenticated provider lookup
+
+#### Prior Authorization (FHIR Mapping)
+- [ ] **X12 278 → FHIR ServiceRequest** - Transform authorization requests
+- [ ] **Da Vinci PAS Implementation Guide** - Prior Authorization Support profile
+- [ ] **FHIR Task Resource** - Authorization workflow and status tracking
+- [ ] **Clinical Documentation Support** - X12 275 ↔ FHIR DocumentReference
+
+#### Marketplace & Commercial
+- [ ] **Azure Marketplace Launch** - Transactable SaaS offer with usage-based billing
+- [ ] **Subscription Management Portal** - Customer billing and plan management
+- [ ] **SaaS Fulfillment API Integration** - Automated provisioning and metering
+
+### Q3 2025 (July - September): AI-Powered Automation & Advanced Features
+
+#### Prior Authorization API (Complete)
+- [ ] **Real-Time Authorization Decisions** - Instant approval/denial via FHIR
+- [ ] **Clinical Attachment Processing** - Automated review of submitted documents
+- [ ] **Authorization Appeal Workflow** - Integrated appeals for denied requests
+- [ ] **Predictive Authorization** - ML-based pre-authorization recommendations
+
+#### Provider & Member Portals
+- [ ] **Provider Self-Service Portal** - Claims submission without EDI integration
+- [ ] **Real-Time Eligibility Checks** - Web-based eligibility verification
+- [ ] **Authorization Request Submission** - Web forms for prior auth
+- [ ] **Member Portal Mobile App** - iOS and Android native apps
+
+#### AI-Powered Features
+- [ ] **AI Claims Adjudication** - Automated adjudication with confidence scoring
+- [ ] **Predictive Denial Management** - Pre-submission claim validation
+- [ ] **NLP Clinical Documentation** - Extract structured data from PDFs/faxes
+- [ ] **Fraud Detection** - ML-based anomaly detection for claims
+
+### Q4 2025 (October - December): International & Advanced Capabilities
+
+#### International Standards
+- [ ] **Canadian EDI Support** - CMS 1500, UB-04 claim formats
+- [ ] **European HL7 FHIR** - Compliance for EU markets
+- [ ] **Multi-Currency Billing** - International payment processing
+- [ ] **GDPR & PIPEDA Compliance** - Privacy regulations for Canada and EU
+
+#### Advanced Integrations
+- [ ] **Real-Time Benefit Check (RTBC)** - Instant formulary and cost-sharing
+- [ ] **HEDIS & Stars Reporting** - Quality measure reporting via FHIR
+- [ ] **Risk Adjustment (HCC)** - Hierarchical Condition Category coding
+- [ ] **Telehealth Integration** - Virtual visit eligibility and authorization
+
+#### Infrastructure & Operations
+- [ ] **Multi-Cloud Kubernetes** - Deploy on AKS, EKS, GKE
+- [ ] **Geo-Redundancy** - Active-active deployment across regions
+- [ ] **Disaster Recovery** - Automated failover and backup
+- [ ] **Advanced Security** - Blockchain audit trail, zero-trust architecture
+
+---
+
+## Release Notes Archive
+
+For detailed release information, visit:
+- **GitHub Releases**: [https://github.com/aurelianware/cloudhealthoffice/releases](https://github.com/aurelianware/cloudhealthoffice/releases)
+- **Website Release Notes**: [https://cloudhealthoffice.com/release-notes](#) (coming Q1 2025)
+- **CMS Compliance Status**: [CMS-0057-F-COMPLIANCE.md](./docs/CMS-0057-F-COMPLIANCE.md)
 
 ---
 
