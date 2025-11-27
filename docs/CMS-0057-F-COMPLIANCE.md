@@ -2,7 +2,7 @@
 
 **Status**: In Development  
 **Last Updated**: November 2024  
-**Target Compliance Date**: January 2026  
+**Target Compliance Date**: January 2027  
 **Roadmap Phase**: v2.0.0
 
 ---
